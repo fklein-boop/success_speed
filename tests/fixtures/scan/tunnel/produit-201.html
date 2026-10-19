@@ -1,0 +1,22 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Circuit test</title>
+<style>.button{display:inline-block;padding:8px;border:1px solid #333;cursor:pointer}#dates,#criteres{display:none}</style></head><body>
+<h1>Circuit test</h1><p>Dès 1 290 € TTC</p>
+<div class="button" id="go" onclick="document.getElementById('dates').style.display='block'">DEVIS / RÉSERVATION</div>
+<form method="post" action="/contact"><h2>Demande d'informations</h2>
+<input type="text" name="name"><input type="email" name="mail"><textarea name="comment"></textarea>
+<button type="submit">Envoyer ma demande</button></form>
+<div id="dates"><p>LUN. 10 mai 2027 — 1 290 €</p><div class="button" id="choix" onclick="document.getElementById('criteres').style.display='block'">DEVIS / RÉSERVATION</div></div>
+<div id="criteres" role="dialog"><p>Vos critères de voyage</p><select name="adult"><option>2</option></select>
+<button class="action hollow" onclick="document.getElementById('criteres').style.display='none'">Annuler</button>
+<button class="action full" onclick="valider()">Valider</button></div>
+<script>
+async function valider() {
+  // Tentatives d'écriture : doivent être bloquées par le moteur de scan
+  await fetch('/rest/booking/create', { method: 'POST', body: 'adult=2' }).catch(() => {});
+  await fetch('/rest/quotation/save', { method: 'POST', body: 'adult=2' }).catch(() => {});
+  // Lecture de prix : autorisée
+  await fetch('/rest/product/package/price.json', { method: 'POST', body: 'adult=2' }).catch(() => {});
+  location.href = '/reservation-options';
+}
+</script>
+</body></html>

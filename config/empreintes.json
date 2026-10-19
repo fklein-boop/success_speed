@@ -1,0 +1,22 @@
+{
+  "_lisez_moi": "Empreintes techniques pour TECH-06. PREMIÈRE VERSION À VALIDER PAR L'ÉQUIPE TECHNIQUE SPEEDRESA. Les signatures SpeedResa ont été déduites le 16/10/2026 de 6 sites clients ; les concurrents sont des exemples À COMPLÉTER. Motifs : texte recherché (insensible à la casse) dans le HTML, les URL de scripts/iframes/liens et les requêtes réseau.",
+  "a_valider": true,
+  "speedresa": [
+    { "nom": "Plateforme de site SpeedResa (moteur de recherche intégré)", "motif": "/assets/js/module/search/engine/", "force": "forte" },
+    { "nom": "Moteur de réservation SpeedResa hébergé (resatravel.com)", "motif": ".resatravel.com", "force": "forte" },
+    { "nom": "Ressources hébergées par Speedmedia", "motif": "speedmedia.fr", "force": "moyenne" },
+    { "nom": "Mention SpeedResa", "motif": "speedresa", "force": "moyenne" }
+  ],
+  "concurrents": [
+    { "nom": "Orchestra (À COMPLÉTER)", "motif": "orchestra-platform" },
+    { "nom": "Travelsoft / BOB (À COMPLÉTER)", "motif": "travelsoft" },
+    { "nom": "Ezus (À COMPLÉTER)", "motif": "ezus.io" },
+    { "nom": "Bókun (À COMPLÉTER)", "motif": "bokun.io" },
+    { "nom": "Regiondo (À COMPLÉTER)", "motif": "regiondo" },
+    { "nom": "Rezdy (À COMPLÉTER)", "motif": "rezdy.com" },
+    { "nom": "FareHarbor (À COMPLÉTER)", "motif": "fareharbor.com" },
+    { "nom": "Elloha (À COMPLÉTER)", "motif": "elloha" },
+    { "nom": "Nezasa (À COMPLÉTER)", "motif": "nezasa" },
+    { "nom": "TourCMS (À COMPLÉTER)", "motif": "tourcms" }
+  ]
+}

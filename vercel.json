@@ -1,0 +1,28 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "fra1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/rappel-import",
+      "schedule": "0 10 * * 1"
+    },
+    {
+      "path": "/api/cron/relances-questionnaires",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/rescan-mensuel",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/scans",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/ga4",
+      "schedule": "0 5 2 * *"
+    }
+  ]
+}

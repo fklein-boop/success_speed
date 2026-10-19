@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+/*
+ * Charte SpeedResa — design tokens (05_CHARTE_SPEEDRESA.md, le PDF fait foi).
+ * Lagon et Émeraude ne servent jamais pour du texte sur fond blanc (contraste insuffisant).
+ */
+:root {
+  --sr-minuit: #000033;
+  --sr-horizon: #0a56fc;
+  --sr-lagon: #00cccc;
+  --sr-emeraude: #1eddae;
+  --sr-gris-clair: #e3e7ef;
+  --sr-gris-fonce: #7b859b;
+  /* Texte secondaire sur blanc : gris foncé assombri pour atteindre 4,5:1 (AA) */
+  --sr-gris-texte: #5b6479;
+  --sr-degrade: linear-gradient(90deg, #0a56fc, #00cccc, #1eddae);
+  /* Statuts (complément à la charte, à valider) */
+  --sr-ambre: #f5a524;
+  --sr-rouge: #e5484d;
+  --sr-rouge-texte: #c62f35;
+  /* Polices : un seul token pour basculer vers Silka quand les fichiers seront fournis */
+  --sr-font-titres: "Outfit", "Silka", system-ui, sans-serif;
+  --sr-font-texte: "Open Sans", system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-minuit: var(--sr-minuit);
+  --color-horizon: var(--sr-horizon);
+  --color-lagon: var(--sr-lagon);
+  --color-emeraude: var(--sr-emeraude);
+  --color-gris-clair: var(--sr-gris-clair);
+  --color-gris-fonce: var(--sr-gris-fonce);
+  --color-gris-texte: var(--sr-gris-texte);
+  --color-ambre: var(--sr-ambre);
+  --color-rouge: var(--sr-rouge);
+  --color-rouge-texte: var(--sr-rouge-texte);
+  --font-titres: var(--sr-font-titres);
+  --font-sans: var(--sr-font-texte);
+  --radius-carte: 12px;
+}
+
+html { color: var(--sr-minuit); background: #f6f8fb; }
+body { font-family: var(--sr-font-texte); }
+h1, h2, h3, .font-titres { font-family: var(--sr-font-titres); font-weight: 700; }
+
+:focus-visible { outline: 3px solid var(--sr-horizon); outline-offset: 2px; border-radius: 4px; }
+
+.bg-degrade { background: var(--sr-degrade); }
+
+@layer components {
+  .btn, .btn-primaire, .btn-secondaire, .btn-discret, .btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primaire { @apply bg-horizon text-white hover:bg-[#0846d0]; }
+  .btn-secondaire { @apply border-2 border-horizon text-horizon hover:bg-horizon/5; }
+  .btn-discret { @apply px-3 text-gris-texte hover:bg-gris-clair hover:text-minuit; }
+  .btn-danger { @apply border-2 border-rouge-texte text-rouge-texte hover:bg-rouge/5; }
+  .carte { @apply rounded-carte border border-gris-clair bg-white; }
+  .champ { @apply w-full rounded-lg border border-gris-fonce/40 bg-white px-3 py-2 text-sm text-minuit placeholder:text-gris-texte focus:border-horizon; }
+  .libelle { @apply text-xs font-semibold uppercase tracking-wide text-gris-texte; }
+}
+
+@keyframes pulse-bg { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.squelette { background: var(--sr-gris-clair); border-radius: 8px; animation: pulse-bg 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .squelette { animation: none; } }

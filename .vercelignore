@@ -1,0 +1,15 @@
+# Jamais envoyé à Vercel : secrets, données locales, fichiers de travail
+.env
+.env*.local
+*.json.key
+.data
+.claude
+.DS_Store
+.next
+node_modules
+scratch
+tests
+*.tsbuildinfo
+# Worker (déployé sur Fly.io)
+Dockerfile.worker
+fly.worker.toml

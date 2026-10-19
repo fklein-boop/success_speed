@@ -1,0 +1,298 @@
+{
+ "source": "CSM - Score de maturité numérique (1).xlsx, onglet « 2. Grille de scoring »",
+ "extrait_le": "2026-10-16",
+ "audits": [
+  {
+   "clientId": "S25",
+   "nom": "Sourires du monde",
+   "date": "2025-06-18",
+   "actions": null,
+   "evaluations": [
+    {
+     "critereId": "VIS-01",
+     "ligne": 5,
+     "libelleV1": "Lien du site présent sur Google My Business & Réseaux Sociaux",
+     "statut": "NON"
+    },
+    {
+     "critereId": "VIS-04",
+     "ligne": 6,
+     "libelleV1": "Relais de l'URL sur des sites partenaires, mairies ou CSE locaux",
+     "statut": "NON"
+    },
+    {
+     "critereId": "VIS-05",
+     "ligne": 7,
+     "libelleV1": "Au moins 2 publications d'offres avec liens directs par semaine",
+     "statut": "NON"
+    },
+    {
+     "critereId": "PROD-01",
+     "ligne": 9,
+     "libelleV1": "Part de la production digitalisée",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-02",
+     "ligne": 10,
+     "libelleV1": "Tarification complète (prix enfant/adulte…)",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-03",
+     "ligne": 11,
+     "libelleV1": "Qualité des 3 premières fiches présentent sur la home (min. 5 photosHD, textes uniques, tous les blocs, disponibilités…)",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-04",
+     "ligne": 12,
+     "libelleV1": "Les 5 produits \"Top Ventes\" ont des photos HD et des textes uniques",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-05",
+     "ligne": 13,
+     "libelleV1": "Utilisation des stocks",
+     "statut": "NON"
+    },
+    {
+     "critereId": "PROD-07",
+     "ligne": 15,
+     "libelleV1": "Assurances",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-01",
+     "ligne": 16,
+     "libelleV1": "L'option Assurance est activée et mise en avant dans le funnel",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-02",
+     "ligne": 17,
+     "libelleV1": "Les flux TO tiers sont filtrés (offre lisible, pas de \"bruit\")",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-03",
+     "ligne": 18,
+     "libelleV1": "Disponibilité (%) de la production interne",
+     "statut": "OUI"
+    }
+   ]
+  },
+  {
+   "clientId": "C24",
+   "nom": "Cannelle voyages",
+   "date": null,
+   "actions": "Mise en place GTM, Open package, partage du guide utilisateurs",
+   "evaluations": [
+    {
+     "critereId": "VIS-01",
+     "ligne": 5,
+     "libelleV1": "Lien du site présent sur Google My Business & Réseaux Sociaux",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "VIS-04",
+     "ligne": 6,
+     "libelleV1": "Relais de l'URL sur des sites partenaires, mairies ou CSE locaux",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "VIS-05",
+     "ligne": 7,
+     "libelleV1": "Au moins 2 publications d'offres avec liens directs par semaine",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "VIS-06",
+     "ligne": 8,
+     "libelleV1": "Utilisation de QR Codes sur les supports physiques (catalogues/flyers)",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-01",
+     "ligne": 9,
+     "libelleV1": "Part de la production digitalisée",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-02",
+     "ligne": 10,
+     "libelleV1": "Tarification complète (prix enfant/adulte…)",
+     "statut": "CORRIGÉ"
+    },
+    {
+     "critereId": "PROD-03",
+     "ligne": 11,
+     "libelleV1": "Qualité des 3 premières fiches présentent sur la home (min. 5 photosHD, textes uniques, tous les blocs, disponibilités…)",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-04",
+     "ligne": 12,
+     "libelleV1": "Les 5 produits \"Top Ventes\" ont des photos HD et des textes uniques",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-05",
+     "ligne": 13,
+     "libelleV1": "Utilisation des stocks",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-06",
+     "ligne": 14,
+     "libelleV1": "Taux de produits avec options",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PROD-07",
+     "ligne": 15,
+     "libelleV1": "Assurances",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-01",
+     "ligne": 16,
+     "libelleV1": "L'option Assurance est activée et mise en avant dans le funnel",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-02",
+     "ligne": 17,
+     "libelleV1": "Les flux TO tiers sont filtrés (offre lisible, pas de \"bruit\")",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-03",
+     "ligne": 18,
+     "libelleV1": "Disponibilité (%) de la production interne",
+     "statut": "OUI"
+    },
+    {
+     "critereId": "PERF-04",
+     "ligne": 19,
+     "libelleV1": "Taux de conversion site (visite total / ventes)",
+     "statut": "NON"
+    },
+    {
+     "critereId": "PERF-05",
+     "ligne": 20,
+     "libelleV1": "Nombre de ventes totales",
+     "statut": "NON"
+    },
+    {
+     "critereId": "PERF-06",
+     "ligne": 21,
+     "libelleV1": "Evolution de la GTV QoQ",
+     "statut": "NON"
+    },
+    {
+     "critereId": "PERF-07",
+     "ligne": 22,
+     "libelleV1": "Taux d’abandon panier (nb de paniers créés avec mail et non aboutis)",
+     "statut": "NON"
+    },
+    {
+     "critereId": "PERF-08",
+     "ligne": 23,
+     "libelleV1": "Part de revente Upsell & assurances",
+     "statut": "CORRIGÉ"
+    },
+    {
+     "critereId": "PERF-09",
+     "ligne": 24,
+     "libelleV1": "Envoie d'un rapport mensuel",
+     "statut": "NON"
+    },
+    {
+     "critereId": "TRK-01",
+     "ligne": 30,
+     "libelleV1": "GA en place",
+     "statut": "NON"
+    },
+    {
+     "critereId": "LEG-01",
+     "ligne": 31,
+     "libelleV1": "Axeptio en place",
+     "statut": "PARTIELLEMENT"
+    },
+    {
+     "critereId": "RES-01",
+     "ligne": 25,
+     "libelleV1": "Pour les CSE/B2B : comptes autonomes créés pour les clients",
+     "statut": "NON"
+    },
+    {
+     "critereId": "RES-02",
+     "ligne": 26,
+     "libelleV1": "Taux de partage des séjours/circuits (Cb de produits sur S01)",
+     "statut": "NON"
+    },
+    {
+     "critereId": "RES-03",
+     "ligne": 27,
+     "libelleV1": "Part de produits externes ouverts (Cb proviennent de S01)",
+     "statut": "NON"
+    },
+    {
+     "critereId": "RES-04",
+     "ligne": 28,
+     "libelleV1": "RQ ou ResaLive (cf. Nb de dossiers/Nb de ventes)",
+     "statut": "NON"
+    },
+    {
+     "critereId": "SOC-01",
+     "ligne": 29,
+     "libelleV1": "L'outil est connecté au CRM / ERP métier (pas de resaisie manuelle)",
+     "statut": "NON"
+    },
+    {
+     "critereId": "SOC-02",
+     "ligne": 32,
+     "libelleV1": "KIT : Date de dernière màj",
+     "statut": "PARTIELLEMENT"
+    },
+    {
+     "critereId": "SOC-03",
+     "ligne": 33,
+     "libelleV1": "Moyen de paiement set",
+     "statut": "PARTIELLEMENT"
+    },
+    {
+     "critereId": "SOC-04",
+     "ligne": 34,
+     "libelleV1": "Vérifier que le nb de transaction PayBox corresponde au nb de dossiers SpeedResa",
+     "statut": "CORRIGÉ"
+    },
+    {
+     "critereId": "SOC-05",
+     "ligne": 35,
+     "libelleV1": "Le client est bien sur MT et non sur SRA2",
+     "statut": "CORRIGÉ"
+    },
+    {
+     "critereId": "SOC-06",
+     "ligne": 36,
+     "libelleV1": "Migration sur Scylla effectuée, et vérification du bon fonctionnement",
+     "statut": "CORRIGÉ"
+    },
+    {
+     "critereId": "DIST-01",
+     "ligne": 37,
+     "libelleV1": "Elligible et opt-in Veepee (upsale ou déjà connecté)",
+     "statut": "CORRIGÉ"
+    },
+    {
+     "critereId": "DIST-02",
+     "ligne": 38,
+     "libelleV1": "Qualité des produits set sur veepee",
+     "statut": "CORRIGÉ"
+    }
+   ]
+  }
+ ]
+}

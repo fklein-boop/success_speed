@@ -1,0 +1,16 @@
+# Worker de pré-audit (Playwright + Chromium). À héberger hors Vercel, en région UE.
+# L'image officielle Playwright contient déjà Chromium et ses dépendances système.
+FROM mcr.microsoft.com/playwright:v1.64.1-noble
+WORKDIR /app
+COPY package.json package-lock.json ./
+# --include=dev : tsx (qui lance le worker) est une dépendance de développement
+RUN npm ci --include=dev --ignore-scripts --no-audit --no-fund
+ENV NODE_ENV=production
+COPY tsconfig.json ./
+COPY src ./src
+COPY scripts ./scripts
+COPY config ./config
+COPY data ./data
+COPY drizzle ./drizzle
+USER pwuser
+CMD ["npx", "tsx", "scripts/scan-worker.ts"]

@@ -1,0 +1,11 @@
+# Déploiement du worker de scan sur Fly.io, région Paris.
+# fly launch --config fly.worker.toml --no-deploy   puis   fly deploy --config fly.worker.toml
+app = "speedresa-audit-worker"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile.worker"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

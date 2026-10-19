@@ -1,0 +1,11 @@
+{
+  "_lisez_moi": "Interprétation des réponses du questionnaire client. type : oui_non (Oui / En partie / Non / Je ne sais pas), nombre, pourcentage, note10. « reponses » donne le statut proposé pour chaque réponse ; null = réponse informative (le résultat automatique ou le CSM décide). « question » remplace question_client si besoin.",
+  "criteres": {
+    "VIS-05": { "type": "nombre", "unite": "publications par semaine", "question": "Combien de publications d'offres (avec un lien vers votre site) faites-vous en moyenne par semaine sur vos réseaux sociaux ?", "seuils": { "plein": 2, "moitie": 1 } },
+    "PROD-01": { "type": "pourcentage", "question": "Quelle part de vos voyages est réservable ou consultable en ligne sur votre site ?" },
+    "TRK-05": { "type": "oui_non", "reponses": { "oui": null, "en_partie": null, "non": "N.A.", "ne_sais_pas": null }, "aide": "Annonces Google, publicités Facebook ou Instagram…" },
+    "LEG-09": { "type": "oui_non", "reponses": { "oui": "N.A.", "en_partie": null, "non": null, "ne_sais_pas": null }, "aide": "Les micro-entreprises sont exemptées de l'obligation d'accessibilité numérique." },
+    "INN-05": { "type": "oui_non", "question": "Affichez-vous l'empreinte carbone de vos voyages, ou disposez-vous d'un label de tourisme durable (ATR, Travelife, Clef Verte…) ?" },
+    "REL-02": { "type": "note10", "question": "Sur une échelle de 0 à 10, recommanderiez-vous nos outils à un confrère ?" }
+  }
+}

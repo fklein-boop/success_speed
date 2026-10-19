@@ -1,0 +1,12 @@
+node_modules
+.next
+.data
+.env
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+scratch
+.vercel
+.DS_Store
+.claude
+*.json.key
