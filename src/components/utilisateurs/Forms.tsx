@@ -1,7 +1,37 @@
 "use client";
 
-import { useActionState } from "react";
-import { ajouterUtilisateurs, reattribuerClients } from "@/app/(app)/utilisateurs/actions";
+import { useActionState, useState, useTransition } from "react";
+import { Check, Copy, Link2, Loader2 } from "lucide-react";
+import { ajouterUtilisateurs, genererLienConnexion, reattribuerClients } from "@/app/(app)/utilisateurs/actions";
+
+/** Lien de connexion à usage unique, valable 7 jours, à copier et transmettre soi-même (Teams, Slack, SMS…). */
+export function LienConnexion({ id, email }: { id: number; email: string }) {
+  const [pending, start] = useTransition();
+  const [res, setRes] = useState<{ url?: string; erreur?: string } | null>(null);
+  const [copie, setCopie] = useState(false);
+  if (res?.url) {
+    return (
+      <div className="flex w-72 flex-col gap-1">
+        <div className="flex gap-1">
+          <label className="sr-only" htmlFor={`lien-${id}`}>Lien de connexion pour {email}</label>
+          <input id={`lien-${id}`} readOnly value={res.url} onFocus={(e) => e.currentTarget.select()} className="champ py-1 font-mono text-xs" />
+          <button type="button" className="btn-secondaire px-2 py-1 text-xs" onClick={async () => { try { await navigator.clipboard.writeText(res.url!); setCopie(true); } catch { setCopie(false); } }}>
+            {copie ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}<span className="sr-only">Copier</span>
+          </button>
+        </div>
+        <p className="text-xs text-gris-texte">{copie ? "Copié. " : ""}Usage unique, valable 7 jours. À envoyer à {email} uniquement, par un canal privé.</p>
+      </div>
+    );
+  }
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <button type="button" className="btn-discret px-2 py-1 text-xs" disabled={pending} onClick={() => start(async () => setRes(await genererLienConnexion(id)))}>
+        {pending ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <Link2 size={12} aria-hidden />} Lien de connexion
+      </button>
+      {res?.erreur && <span role="alert" className="text-xs text-rouge-texte">{res.erreur}</span>}
+    </span>
+  );
+}
 
 export function AjoutUtilisateurs() {
   const [state, action, pending] = useActionState(ajouterUtilisateurs, null);

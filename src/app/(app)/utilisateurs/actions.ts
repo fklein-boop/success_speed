@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { clients, users } from "@/db/schema";
-import { appUrl, assertUser, isSuperadminEmail, normalizeEmail } from "@/lib/server/auth";
+import { appUrl, assertUser, creerLienConnexion, isSuperadminEmail, normalizeEmail } from "@/lib/server/auth";
 import { logActivity } from "@/lib/server/activity";
 import { emailLayout, sendEmail } from "@/lib/server/email";
 
@@ -50,7 +50,7 @@ export async function ajouterUtilisateurs(_: unknown, form: FormData) {
   revalidatePath("/utilisateurs");
   return {
     ok: true,
-    message: `${nouveaux.length} utilisateur(s) ajouté(s)${existants.size ? `, ${existants.size} déjà présent(s)` : ""}${envoyer ? (echecs ? `, ${echecs} invitation(s) non envoyée(s)` : ", invitations envoyées") : ""}.`,
+    message: `${nouveaux.length} utilisateur(s) ajouté(s)${existants.size ? `, ${existants.size} déjà présent(s)` : ""}${envoyer ? (echecs ? `, ${echecs} invitation(s) non envoyée(s) : utilisez « Lien de connexion » dans la liste` : ", invitations envoyées") : ""}.`,
   };
 }
 
@@ -89,6 +89,19 @@ export async function renvoyerInvitation(form: FormData) {
   await db.update(users).set({ inviteLe: new Date() }).where(eq(users.id, id));
   await logActivity(admin.id, "invitation_envoyee", "user", String(id), { email: u.email });
   revalidatePath("/utilisateurs");
+}
+
+/** Lien de connexion à usage unique (7 jours), à transmettre soi-même à l'utilisateur. */
+export async function genererLienConnexion(id: number): Promise<{ url?: string; erreur?: string }> {
+  const admin = await assertUser(["superadmin"]);
+  const db = await getDb();
+  const [u] = await db.select().from(users).where(eq(users.id, id));
+  if (!u || !u.actif) return { erreur: "Compte inactif ou introuvable." };
+  const url = await creerLienConnexion(u.email);
+  if (!url) return { erreur: "Lien impossible pour ce compte." };
+  if (!u.inviteLe) await db.update(users).set({ inviteLe: new Date() }).where(eq(users.id, id));
+  await logActivity(admin.id, "lien_connexion_genere", "user", String(id), { email: u.email });
+  return { url };
 }
 
 export async function reattribuerClients(_: unknown, form: FormData) {

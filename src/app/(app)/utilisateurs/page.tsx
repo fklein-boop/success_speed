@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import { clients, users } from "@/db/schema";
 import { isSuperadminEmail, requireUser } from "@/lib/server/auth";
 import { fmtDateTime } from "@/lib/format";
-import { AjoutUtilisateurs, Reattribution } from "@/components/utilisateurs/Forms";
+import { AjoutUtilisateurs, LienConnexion, Reattribution } from "@/components/utilisateurs/Forms";
 import { modifierUtilisateur, renvoyerInvitation } from "./actions";
 
 const ROLES: [string, string][] = [["superadmin", "Super admin"], ["csm", "CSM"], ["lecture", "Lecture seule"]];
@@ -12,12 +12,14 @@ export default async function UtilisateursPage() {
   const me = await requireUser(["superadmin"]);
   const db = await getDb();
   const list = await db.select().from(users).orderBy(asc(users.email));
+  const emailActif = !!process.env.RESEND_API_KEY || process.env.NODE_ENV !== "production";
   const parCsm = new Map((await db.select({ csm: clients.csmId, n: count() }).from(clients).groupBy(clients.csmId)).map((r) => [r.csm, r.n]));
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl">Utilisateurs</h1>
         <p className="mt-1 max-w-2xl text-gris-texte">Seules les adresses de cette liste peuvent se connecter. On ne supprime pas un compte : on le désactive, pour garder l&apos;historique des audits.</p>
+        <p className="mt-1 max-w-2xl text-sm text-gris-texte">« Lien de connexion » crée un lien à usage unique, valable 7 jours, que vous transmettez vous-même (Teams, Slack…).{emailActif ? "" : " Les emails ne sont pas encore configurés : c'est pour l'instant le seul moyen de donner accès, et il faudra un nouveau lien après chaque déconnexion."}</p>
       </div>
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="carte p-4 lg:col-span-2" aria-labelledby="ajout-titre">
@@ -78,8 +80,11 @@ export default async function UtilisateursPage() {
                     )}
                   </td>
                   <td className="px-3 py-2">
-                    {u.actif && !u.derniereConnexion && (
-                      <form action={renvoyerInvitation}><input type="hidden" name="id" value={u.id} /><button className="btn-discret px-2 py-1 text-xs">Envoyer l&apos;invitation</button></form>
+                    {u.actif && u.id !== me.id && (
+                      <div className="flex flex-wrap items-start gap-1">
+                        {!u.derniereConnexion && emailActif && <form action={renvoyerInvitation}><input type="hidden" name="id" value={u.id} /><button className="btn-discret px-2 py-1 text-xs">Envoyer l&apos;invitation</button></form>}
+                        <LienConnexion id={u.id} email={u.email} />
+                      </div>
                     )}
                   </td>
                 </tr>

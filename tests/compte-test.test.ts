@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
 import { activityLog, users } from "@/db/schema";
-import { compteTestActif, connexionTest } from "@/lib/server/auth";
+import { compteTestActif, connexionTest, consumeMagicLink, creerLienConnexion } from "@/lib/server/auth";
 
 process.env.PGLITE_DIR = "memory";
 const MDP = "un-mot-de-passe-de-test-long";
@@ -44,5 +44,17 @@ describe("Compte de test (email et mot de passe)", () => {
     expect(await connexionTest("test@speedmedia.test", MDP)).toBeNull();
     await db.delete(activityLog).where(eq(activityLog.action, "connexion_test_echec"));
     expect(await connexionTest("test@speedmedia.test", MDP)).not.toBeNull();
+  });
+
+  it("lien de première connexion : usage unique, refusé aux comptes inconnus ou inactifs", async () => {
+    await db.insert(users).values({ email: "collegue@speedmedia.test", role: "csm" });
+    expect(await creerLienConnexion("inconnu@speedmedia.test")).toBeNull();
+    const url = await creerLienConnexion("Collegue@speedmedia.test");
+    expect(url).toMatch(/\/connexion\/verifier\?token=/);
+    const token = new URL(url!).searchParams.get("token")!;
+    expect(await consumeMagicLink(token)).toMatchObject({ email: "collegue@speedmedia.test", role: "csm" });
+    expect(await consumeMagicLink(token)).toBeNull(); // déjà utilisé
+    await db.update(users).set({ actif: false }).where(eq(users.email, "collegue@speedmedia.test"));
+    expect(await creerLienConnexion("collegue@speedmedia.test")).toBeNull();
   });
 });

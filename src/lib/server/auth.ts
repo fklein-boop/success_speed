@@ -135,6 +135,22 @@ export async function requestMagicLink(email: string): Promise<string | undefine
   if (process.env.NODE_ENV !== "production" && !process.env.RESEND_API_KEY) return url;
 }
 
+/** Validité d'un lien de première connexion remis par le super admin (copié dans Teams, Slack…) */
+export const LIEN_INVITATION_MS = 7 * 24 * 3600_000;
+
+/**
+ * Lien de connexion à usage unique, généré par le super admin pour un utilisateur actif de la liste blanche,
+ * à transmettre sans passer par l'email (quand Resend n'est pas configuré). Le jeton n'est stocké que haché.
+ */
+export async function creerLienConnexion(email: string, dureeMs = LIEN_INVITATION_MS): Promise<string | null> {
+  const user = await findAllowedUser(email);
+  if (!user) return null;
+  const db = await getDb();
+  const token = randomToken();
+  await db.insert(loginTokens).values({ tokenHash: hashToken(token), email: user.email, expiresAt: new Date(Date.now() + dureeMs) });
+  return `${appUrl()}/connexion/verifier?token=${encodeURIComponent(token)}`;
+}
+
 /** Consomme un lien magique. Renvoie l'utilisateur si le lien est valide. */
 export async function consumeMagicLink(token: string): Promise<User | null> {
   const db = await getDb();
