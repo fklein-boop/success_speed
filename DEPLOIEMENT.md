@@ -92,6 +92,8 @@ Projet → **Settings → Environment Variables**, environnement **Production** 
 | `ANTHROPIC_API_KEY` | voir étape 9 | conseillé |
 | `GA4_CREDENTIALS` | contenu du fichier JSON du compte de service, voir étape 9 (cochez *Sensitive*) | conseillé |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | SSO Google, voir étape 9 | facultatif |
+| `TEST_LOGIN_EMAIL` / `TEST_LOGIN_PASSWORD` | compte de test : connexion par email et mot de passe (16 caractères au moins), sans lien magique. Supprimez-les pour le désactiver | facultatif |
+| `TEST_LOGIN_ROLE` | rôle du compte de test : `superadmin` (par défaut), `csm` ou `lecture` | facultatif |
 
 `DATABASE_URL` est déjà là (étape 3). Laissez `SCAN_MODE` vide pour l'instant.
 

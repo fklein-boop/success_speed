@@ -1,11 +1,28 @@
 "use client";
 
-import { useActionState } from "react";
-import { ArrowRight, Mail } from "lucide-react";
-import { demanderLien } from "./actions";
+import { useActionState, useState } from "react";
+import { ArrowRight, KeyRound, Mail } from "lucide-react";
+import { connexionCompteTest, demanderLien } from "./actions";
 
-export function LoginForm({ google }: { google: boolean }) {
+/** Compte de test (variables TEST_LOGIN_*) : email et mot de passe, sans lien magique. */
+function FormTest() {
+  const [state, action, pending] = useActionState(connexionCompteTest, null);
+  return (
+    <form action={action} className="space-y-3 rounded-lg border border-gris-clair p-4">
+      <p className="text-sm font-semibold">Compte de test</p>
+      <label htmlFor="email-test" className="libelle block">Email du compte de test</label>
+      <input id="email-test" name="email" type="email" required autoComplete="username" defaultValue={state?.email} className="champ" />
+      <label htmlFor="mdp-test" className="libelle block">Mot de passe</label>
+      <input id="mdp-test" name="motDePasse" type="password" required autoComplete="current-password" className="champ" />
+      {state?.erreur && <p role="alert" className="text-sm text-rouge-texte">{state.erreur}</p>}
+      <button type="submit" className="btn-primaire w-full" disabled={pending}><KeyRound size={16} aria-hidden /> {pending ? "Connexion…" : "Se connecter"}</button>
+    </form>
+  );
+}
+
+export function LoginForm({ google, test = false }: { google: boolean; test?: boolean }) {
   const [state, action, pending] = useActionState(demanderLien, null);
+  const [voirTest, setVoirTest] = useState(false);
   if (state?.envoye) {
     return (
       <div role="status" className="mt-6 rounded-lg bg-emeraude/15 p-4 text-sm">
@@ -32,6 +49,7 @@ export function LoginForm({ google }: { google: boolean }) {
           <a href="/api/auth/google" className="btn-secondaire w-full">Continuer avec Google</a>
         </>
       )}
+      {test && (voirTest ? <FormTest /> : <button type="button" onClick={() => setVoirTest(true)} className="btn-discret w-full text-xs">Connexion avec le compte de test</button>)}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { consumeMagicLink, createSession, destroySession, requestMagicLink } from "@/lib/server/auth";
+import { connexionTest, consumeMagicLink, createSession, destroySession, requestMagicLink } from "@/lib/server/auth";
 
 export async function demanderLien(_: unknown, form: FormData) {
   const email = String(form.get("email") ?? "");
@@ -14,6 +14,13 @@ export async function verifierLien(form: FormData) {
   const user = token ? await consumeMagicLink(token) : null;
   if (!user) redirect("/connexion?erreur=lien");
   await createSession(user, "lien");
+  redirect("/");
+}
+
+export async function connexionCompteTest(_: unknown, form: FormData) {
+  const user = await connexionTest(String(form.get("email") ?? ""), String(form.get("motDePasse") ?? ""));
+  if (!user) return { erreur: "Identifiants incorrects, ou trop de tentatives : réessayez dans 15 minutes.", email: String(form.get("email") ?? "") };
+  await createSession(user, "test");
   redirect("/");
 }
 

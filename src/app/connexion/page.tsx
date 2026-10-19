@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/server/auth";
+import { compteTestActif, getCurrentUser } from "@/lib/server/auth";
 import { googleEnabled } from "@/lib/server/google";
 import { Logo } from "@/components/Logo";
 import { LoginForm } from "./LoginForm";
@@ -23,7 +23,7 @@ export default async function ConnexionPage({ searchParams }: { searchParams: Pr
           {erreur && ERREURS[erreur] && (
             <p role="alert" className="mt-4 rounded-lg border border-rouge/40 bg-rouge/5 p-3 text-sm text-rouge-texte">{ERREURS[erreur]}</p>
           )}
-          <LoginForm google={googleEnabled()} />
+          <LoginForm google={googleEnabled()} test={compteTestActif()} />
         </div>
       </div>
     </main>

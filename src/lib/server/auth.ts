@@ -1,10 +1,10 @@
 import "server-only";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull, count } from "drizzle-orm";
 import { getDb } from "@/db";
-import { loginTokens, sessions, users } from "@/db/schema";
+import { activityLog, loginTokens, sessions, users } from "@/db/schema";
 import { ensureSuperadmin } from "@/lib/seed";
 import { emailLayout, sendEmail } from "./email";
 import { logActivity } from "./activity";
@@ -69,7 +69,7 @@ export async function assertUser(roles?: Role[]): Promise<User> {
 export const canImport = (u: User) => u.role === "superadmin" || (u.role === "csm" && u.peutImporter);
 export const canEdit = (u: User) => u.role === "superadmin" || u.role === "csm";
 
-export async function createSession(user: User, methode: "lien" | "google") {
+export async function createSession(user: User, methode: "lien" | "google" | "test") {
   const db = await getDb();
   const token = randomToken();
   await db.insert(sessions).values({ id: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + MAX_MS) });
@@ -143,4 +143,39 @@ export async function consumeMagicLink(token: string): Promise<User | null> {
     .returning();
   if (!t) return null;
   return findAllowedUser(t.email);
+}
+
+/**
+ * Compte de test : connexion par email et mot de passe, sans lien magique.
+ * Actif seulement si TEST_LOGIN_EMAIL et TEST_LOGIN_PASSWORD (16 caractères au moins) sont définis ;
+ * rôle TEST_LOGIN_ROLE (superadmin par défaut). Pour le désactiver, supprimez ces variables.
+ * 5 échecs en 15 minutes bloquent la connexion de test pendant 15 minutes.
+ */
+const ROLES_TEST: Role[] = ["superadmin", "csm", "lecture"];
+export const MDP_TEST_MIN = 16;
+
+export function compteTestActif(): boolean {
+  const e = process.env.TEST_LOGIN_EMAIL?.trim(), p = process.env.TEST_LOGIN_PASSWORD ?? "";
+  return !!e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && p.length >= MDP_TEST_MIN;
+}
+
+const empreinte = (s: string) => createHash("sha256").update(s).digest();
+
+export async function connexionTest(email: string, motDePasse: string): Promise<User | null> {
+  if (!compteTestActif()) return null;
+  const db = await getDb();
+  const [{ n }] = await db.select({ n: count() }).from(activityLog)
+    .where(and(eq(activityLog.action, "connexion_test_echec"), gt(activityLog.createdAt, new Date(Date.now() - LINK_MS))));
+  if (n >= 5) return null;
+  const e = normalizeEmail(email);
+  const ok = e === normalizeEmail(process.env.TEST_LOGIN_EMAIL!) && timingSafeEqual(empreinte(motDePasse), empreinte(process.env.TEST_LOGIN_PASSWORD!));
+  if (!ok) {
+    await logActivity(null, "connexion_test_echec", "user", "", {});
+    return null;
+  }
+  const role = ROLES_TEST.find((r) => r === process.env.TEST_LOGIN_ROLE?.trim()) ?? "superadmin";
+  // Créé au premier usage ; s'il a été désactivé dans « Utilisateurs », il reste désactivé
+  await db.insert(users).values({ email: e, nom: "Compte de test", role, actif: true, peutImporter: role !== "lecture" }).onConflictDoNothing({ target: users.email });
+  const [u] = await db.select().from(users).where(eq(users.email, e));
+  return u?.actif ? u : null;
 }

@@ -455,3 +455,10 @@ Durée totale : 52 à 136 s, sous l'objectif de 3 minutes. Avec PageSpeed, Claud
 - **Nouveaux indicateurs** (fiche client, bloc Trafic) : conversion web = achats ÷ sessions ; abandon panier = 1 − achats ÷ débuts de réservation (au moins 30 débuts sur la période) ; CA web mensuel ; origine des visites. La conversion « confirmés ÷ visites » et le manque à gagner restent calculés comme avant, pour rester comparables entre clients GA4 et fichier.
 - **Levier « Abandon panier élevé »** désormais actif : au-dessus de la médiane du portefeuille + 10 points (critique à + 20 points), ou au-dessus de 90 % tant que moins de 5 clients sont mesurés.
 - **À vérifier sur les vraies données** : que le module SpeedResa envoie bien `begin_checkout` et `purchase` (sinon, renseigner les noms réels des événements dans l'écran) et que « Nom du client » est rempli sur ces événements.
+
+## Compte de test sans lien magique (19/10/2026)
+
+- Pour tester sans boîte mail : `TEST_LOGIN_EMAIL` + `TEST_LOGIN_PASSWORD` (16 caractères au moins) activent sur la page de connexion un bouton discret « Connexion avec le compte de test » (email et mot de passe). Sans ces variables, rien n'apparaît et rien n'est accepté.
+- Rôle `TEST_LOGIN_ROLE` (super admin par défaut). Le compte est créé au premier usage et apparaît dans « Utilisateurs » ; s'il y est désactivé, il reste bloqué.
+- Comparaison en temps constant ; 5 échecs en 15 minutes bloquent la connexion de test pendant 15 minutes ; chaque connexion est journalisée (méthode « test »).
+- À supprimer quand les vrais comptes fonctionnent : c'est un accès par mot de passe, moins sûr que le lien magique.
