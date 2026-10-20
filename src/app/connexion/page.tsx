@@ -19,7 +19,7 @@ export default async function ConnexionPage({ searchParams }: { searchParams: Pr
         <div className="mb-8 text-center"><Logo inverse className="text-3xl" /></div>
         <div className="carte p-8">
           <h1 className="text-2xl">Plateforme d&apos;audit CSM</h1>
-          <p className="mt-2 text-sm text-gris-texte">Accès réservé à l&apos;équipe Speedmedia. Recevez un lien de connexion par email, sans mot de passe.</p>
+          <p className="mt-2 text-sm text-gris-texte">Accès réservé à l&apos;équipe Speedmedia. Connectez-vous avec l&apos;identifiant et le mot de passe fournis par votre administrateur.</p>
           {erreur && ERREURS[erreur] && (
             <p role="alert" className="mt-4 rounded-lg border border-rouge/40 bg-rouge/5 p-3 text-sm text-rouge-texte">{ERREURS[erreur]}</p>
           )}

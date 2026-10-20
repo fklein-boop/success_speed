@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { clients, users } from "@/db/schema";
-import { appUrl, assertUser, creerLienConnexion, isSuperadminEmail, normalizeEmail } from "@/lib/server/auth";
+import { appUrl, assertUser, creerLienConnexion, definirMotDePasseProvisoire, isSuperadminEmail, normalizeEmail } from "@/lib/server/auth";
 import { logActivity } from "@/lib/server/activity";
 import { emailLayout, sendEmail } from "@/lib/server/email";
 
@@ -102,6 +102,15 @@ export async function genererLienConnexion(id: number): Promise<{ url?: string; 
   if (!u.inviteLe) await db.update(users).set({ inviteLe: new Date() }).where(eq(users.id, id));
   await logActivity(admin.id, "lien_connexion_genere", "user", String(id), { email: u.email });
   return { url };
+}
+
+/** Mot de passe provisoire (choisi, ou généré si vide), à changer par l'utilisateur à sa première connexion. */
+export async function motDePasseProvisoire(id: number, choisi: string): Promise<{ motDePasse?: string; erreur?: string }> {
+  const admin = await assertUser(["superadmin"]);
+  if (id === admin.id) return { erreur: "Changez votre propre mot de passe avec l'icône clé en haut à droite." };
+  const r = await definirMotDePasseProvisoire(id, admin.id, choisi.slice(0, 200));
+  revalidatePath("/utilisateurs");
+  return r;
 }
 
 export async function reattribuerClients(_: unknown, form: FormData) {

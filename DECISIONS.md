@@ -462,3 +462,11 @@ Durée totale : 52 à 136 s, sous l'objectif de 3 minutes. Avec PageSpeed, Claud
 - Rôle `TEST_LOGIN_ROLE` (super admin par défaut). Le compte est créé au premier usage et apparaît dans « Utilisateurs » ; s'il y est désactivé, il reste bloqué.
 - Comparaison en temps constant ; 5 échecs en 15 minutes bloquent la connexion de test pendant 15 minutes ; chaque connexion est journalisée (méthode « test »).
 - À supprimer quand les vrais comptes fonctionnent : c'est un accès par mot de passe, moins sûr que le lien magique.
+
+## Identifiant et mot de passe par utilisateur (20/10/2026)
+
+- **Connexion principale** : identifiant = adresse email, mot de passe. Le lien par email reste disponible (« Recevoir plutôt un lien »), le compte de test aussi.
+- **Création par le super admin** (Utilisateurs → « Créer un mot de passe ») : mot de passe provisoire saisi, ou généré si le champ reste vide (format `Kp7m-Xq2r-Tz9w-Hn4c`, environ 90 bits). Affiché **une seule fois**, avec un bouton qui copie identifiant et mot de passe. « Réinitialiser » remplace l'ancien et ferme les sessions de l'utilisateur.
+- **Première connexion** : avec un mot de passe provisoire, toutes les pages renvoient vers « Choisissez votre mot de passe » (et les actions sont refusées) tant qu'il n'est pas remplacé. Ensuite, l'icône clé de l'en-tête permet de le changer ; les autres sessions sont alors fermées.
+- **Règles** : 12 caractères au moins, pas l'identifiant, pas de mot de passe évident. Stockage scrypt salé (N = 2^15), jamais en clair ; comparaison en temps constant, durée de réponse identique pour une adresse inconnue.
+- **Anti-force brute** : 5 échecs en 15 minutes sur une adresse bloquent les essais 15 minutes (100 échecs tous comptes confondus bloquent tout le monde 15 minutes). Échecs, créations et changements sont journalisés.

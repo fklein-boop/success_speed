@@ -18,6 +18,11 @@ export const users = pgTable("users", {
   invitePar: integer("invite_par"),
   inviteLe: timestamp("invite_le", { withTimezone: true }),
   derniereConnexion: timestamp("derniere_connexion", { withTimezone: true }),
+  /** Mot de passe (scrypt, sel aléatoire) ; null = connexion par lien uniquement */
+  motDePasseHash: text("mot_de_passe_hash"),
+  /** Mot de passe fixé par le super admin : à changer à la première connexion */
+  motDePasseTemporaire: boolean("mot_de_passe_temporaire").notNull().default(false),
+  motDePasseModifieLe: timestamp("mot_de_passe_modifie_le", { withTimezone: true }),
   createdAt: createdAt(),
 });
 

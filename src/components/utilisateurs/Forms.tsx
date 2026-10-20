@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Check, Copy, Link2, Loader2 } from "lucide-react";
-import { ajouterUtilisateurs, genererLienConnexion, reattribuerClients } from "@/app/(app)/utilisateurs/actions";
+import { Check, Copy, KeyRound, Link2, Loader2 } from "lucide-react";
+import { ajouterUtilisateurs, genererLienConnexion, motDePasseProvisoire, reattribuerClients } from "@/app/(app)/utilisateurs/actions";
 
 /** Lien de connexion à usage unique, valable 7 jours, à copier et transmettre soi-même (Teams, Slack, SMS…). */
 export function LienConnexion({ id, email }: { id: number; email: string }) {
@@ -72,6 +72,52 @@ export function Reattribution({ csms }: { csms: { id: number; nom: string; n: nu
       <button className="btn-secondaire" disabled={pending}>Réattribuer</button>
       {state?.message && <p role="status" className="text-sm text-[#0b7a5e]">{state.message}</p>}
       {state?.erreur && <p role="alert" className="text-sm text-rouge-texte">{state.erreur}</p>}
+    </form>
+  );
+}
+
+/**
+ * Identifiant (email) + mot de passe provisoire : saisi par le super admin, ou généré si le champ reste vide.
+ * Affiché une seule fois, à transmettre à l'utilisateur, qui le remplace à sa première connexion.
+ */
+export function MotDePasseProvisoire({ id, email, etat }: { id: number; email: string; etat: "aucun" | "provisoire" | "defini" }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [choisi, setChoisi] = useState("");
+  const [pending, start] = useTransition();
+  const [res, setRes] = useState<{ motDePasse?: string; erreur?: string } | null>(null);
+  const [copie, setCopie] = useState(false);
+  const libelle = etat === "aucun" ? "Créer un mot de passe" : "Réinitialiser le mot de passe";
+  if (res?.motDePasse) {
+    const texte = `Identifiant : ${email}\nMot de passe provisoire : ${res.motDePasse}`;
+    return (
+      <div className="w-72 space-y-1 rounded-lg border border-gris-clair p-2 text-xs">
+        <p>Identifiant : <strong>{email}</strong></p>
+        <p>Mot de passe provisoire : <code className="rounded bg-gris-clair px-1 font-mono text-sm">{res.motDePasse}</code></p>
+        <button type="button" className="btn-secondaire px-2 py-1 text-xs" onClick={async () => { try { await navigator.clipboard.writeText(texte); setCopie(true); } catch { setCopie(false); } }}>
+          {copie ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />} {copie ? "Copié" : "Copier identifiant et mot de passe"}
+        </button>
+        <p className="text-gris-texte">Affiché une seule fois. À transmettre par un canal privé : il devra être changé à la première connexion.</p>
+      </div>
+    );
+  }
+  if (!ouvert) {
+    return (
+      <span className="inline-flex flex-col gap-0.5">
+        <button type="button" className="btn-discret px-2 py-1 text-xs" onClick={() => setOuvert(true)}><KeyRound size={12} aria-hidden /> {libelle}</button>
+        {etat !== "aucun" && <span className="px-2 text-[11px] text-gris-texte">{etat === "provisoire" ? "provisoire, pas encore changé" : "mot de passe personnel défini"}</span>}
+      </span>
+    );
+  }
+  return (
+    <form className="flex w-72 flex-col gap-1" onSubmit={(e) => { e.preventDefault(); start(async () => setRes(await motDePasseProvisoire(id, choisi))); }}>
+      <label className="text-xs text-gris-texte" htmlFor={`mdp-${id}`}>Mot de passe provisoire (vide = généré automatiquement)</label>
+      <div className="flex gap-1">
+        <input id={`mdp-${id}`} value={choisi} onChange={(e) => setChoisi(e.target.value)} autoComplete="off" className="champ py-1 font-mono text-xs" placeholder="12 caractères au moins" />
+        <button className="btn-primaire px-2 py-1 text-xs" disabled={pending}>{pending ? <Loader2 size={12} className="animate-spin" aria-hidden /> : "Valider"}</button>
+        <button type="button" className="btn-discret px-2 py-1 text-xs" onClick={() => { setOuvert(false); setRes(null); }}>Annuler</button>
+      </div>
+      {etat !== "aucun" && <p className="text-[11px] text-gris-texte">L&apos;ancien mot de passe ne fonctionnera plus et ses sessions seront fermées.</p>}
+      {res?.erreur && <p role="alert" className="text-xs text-rouge-texte">{res.erreur}</p>}
     </form>
   );
 }

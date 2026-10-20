@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { ArrowRight, KeyRound, Mail } from "lucide-react";
-import { connexionCompteTest, demanderLien } from "./actions";
+import { connexionCompteTest, connexionParMotDePasse, demanderLien } from "./actions";
 
 /** Compte de test (variables TEST_LOGIN_*) : email et mot de passe, sans lien magique. */
 function FormTest() {
@@ -20,9 +20,25 @@ function FormTest() {
   );
 }
 
+/** Identifiant (email) et mot de passe, créés par le super admin dans « Utilisateurs ». */
+function FormMotDePasse() {
+  const [state, action, pending] = useActionState(connexionParMotDePasse, null);
+  return (
+    <form action={action} className="space-y-3">
+      <label htmlFor="email-mdp" className="libelle block">Identifiant (adresse email)</label>
+      <input id="email-mdp" name="email" type="email" required autoComplete="username" defaultValue={state?.email} className="champ" placeholder="prenom.nom@speedmedia.fr" />
+      <label htmlFor="mdp" className="libelle block">Mot de passe</label>
+      <input id="mdp" name="motDePasse" type="password" required autoComplete="current-password" className="champ" />
+      {state?.erreur && <p role="alert" className="text-sm text-rouge-texte">{state.erreur}</p>}
+      <button type="submit" className="btn-primaire w-full" disabled={pending}><KeyRound size={16} aria-hidden /> {pending ? "Connexion…" : "Se connecter"}</button>
+    </form>
+  );
+}
+
 export function LoginForm({ google, test = false }: { google: boolean; test?: boolean }) {
   const [state, action, pending] = useActionState(demanderLien, null);
   const [voirTest, setVoirTest] = useState(false);
+  const [parLien, setParLien] = useState(false);
   if (state?.envoye) {
     return (
       <div role="status" className="mt-6 rounded-lg bg-emeraude/15 p-4 text-sm">
@@ -36,13 +52,21 @@ export function LoginForm({ google, test = false }: { google: boolean; test?: bo
   }
   return (
     <div className="mt-6 space-y-4">
+      {!parLien ? (
+        <>
+          <FormMotDePasse />
+          <button type="button" onClick={() => setParLien(true)} className="btn-discret w-full text-xs"><Mail size={14} aria-hidden /> Recevoir plutôt un lien de connexion par email</button>
+        </>
+      ) : (
       <form action={action} className="space-y-3">
         <label htmlFor="email" className="libelle block">Adresse email professionnelle</label>
         <input id="email" name="email" type="email" required autoComplete="email" className="champ" placeholder="prenom.nom@speedmedia.fr" />
         <button type="submit" className="btn-primaire w-full" disabled={pending}>
           <Mail size={16} aria-hidden /> {pending ? "Envoi…" : "Recevoir mon lien de connexion"} <ArrowRight size={16} aria-hidden />
         </button>
+        <button type="button" onClick={() => setParLien(false)} className="btn-discret w-full text-xs"><KeyRound size={14} aria-hidden /> Se connecter avec un mot de passe</button>
       </form>
+      )}
       {google && (
         <>
           <div className="flex items-center gap-3 text-xs text-gris-texte"><span className="h-px flex-1 bg-gris-clair" />ou<span className="h-px flex-1 bg-gris-clair" /></div>

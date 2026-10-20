@@ -50,6 +50,13 @@
       "when": 1792406454195,
       "tag": "0006_ga4",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792501726383,
+      "tag": "0007_mots_de_passe",
+      "breakpoints": true
     }
   ]
 }

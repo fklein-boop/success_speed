@@ -120,7 +120,7 @@ Dites-moi « déploie » et je lance la commande ci-dessous, puis je vérifie le
 cd "/Users/francoisklein/DOSSIERS CLAUDE/AUDIT CSM/plateforme-audit-csm" && PATH=$HOME/.local/node/bin:$PATH npx vercel deploy --prod
 ```
 
-Le build applique les 7 migrations, charge les critères, les clients et les 2 anciens audits, puis compile l'application (3 à 5 minutes).
+Le build applique les migrations, charge les critères, les clients et les 2 anciens audits, puis compile l'application (3 à 5 minutes).
 
 **🤖 Claude** vérifie ensuite :
 - la page de connexion ;

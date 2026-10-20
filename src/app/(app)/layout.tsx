@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { asc } from "drizzle-orm";
-import { LogOut } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
 import { getDb } from "@/db";
 import { clients } from "@/db/schema";
 import { canImport, requireUser } from "@/lib/server/auth";
@@ -38,6 +38,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <span className="block">{user.nom || user.email}</span>
               <span className="block text-xs text-lagon">{ROLES[user.role]}</span>
             </span>
+            <Link href="/mot-de-passe" className="rounded-full p-2 hover:bg-white/10" aria-label="Changer mon mot de passe" title="Changer mon mot de passe"><KeyRound size={18} aria-hidden /></Link>
             <form action={deconnexion}>
               <button className="rounded-full p-2 hover:bg-white/10" aria-label="Se déconnecter" title="Se déconnecter"><LogOut size={18} /></button>
             </form>
