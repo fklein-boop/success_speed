@@ -10,6 +10,13 @@ export interface Dossier {
   origine: string;
   total: number;
   erreurResalive: boolean;
+  /** Export enrichi (facultatif) */
+  canal?: string | null;
+  idProduit?: string | null;
+  montantOptions?: number | null;
+  montantAssurance?: number | null;
+  emailRenseigne?: boolean | null;
+  payeEnLigne?: number | null;
 }
 
 export type Segment = "Champion" | "À activer" | "À risque" | "Fantôme";
@@ -81,6 +88,7 @@ export interface ClientMetrics {
   debuts_reservation_mensuels?: number | null;
   ca_web_mensuel?: number | null;
   abandon_reference?: number | null;
+  conversion_site?: number | null;
 }
 
 export interface ClientInput {

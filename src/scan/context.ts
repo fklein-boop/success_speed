@@ -4,6 +4,7 @@ import { collecterNavigateur, parcourirTunnel, rendrePages, type DonneesNavigate
 import { domaineEnregistrable, recuperer, verifierUrl, type Reponse } from "./fetcher";
 import { liens, texteDe, type Lien } from "./html";
 import { chercherFicheGoogle, type FicheGoogle } from "./places";
+import { suivre } from "@/lib/services/etat";
 import { ficheRendue, ficheStatique, liensFiches, type Fiche } from "./produits";
 import { SiteProtegeError, type ScanDonnees } from "./types";
 
@@ -124,8 +125,11 @@ export class ScanContext {
       u.searchParams.set("category", "performance");
       u.searchParams.set("locale", "fr");
       if (this.opts.pagespeedKey) u.searchParams.set("key", this.opts.pagespeedKey);
-      const res = await fetch(u, { signal: AbortSignal.timeout(110_000) });
-      if (!res.ok) throw new Error(res.status === 429 ? "Quota PageSpeed atteint (clé API à configurer)" : `PageSpeed : erreur ${res.status}`);
+      const res = await suivre("pagespeed", async () => {
+        const r = await fetch(u, { signal: AbortSignal.timeout(110_000) });
+        if (!r.ok) throw new Error(r.status === 429 ? "Quota PageSpeed atteint (clé API à configurer)" : `PageSpeed : erreur ${r.status}`);
+        return r;
+      });
       const j = await res.json() as {
         loadingExperience?: { overall_category?: string; metrics?: Record<string, { percentile: number }> };
         lighthouseResult?: { categories?: { performance?: { score: number | null } }; audits?: Record<string, { numericValue?: number }> };
@@ -266,13 +270,17 @@ export class ScanContext {
       const cle = this.opts.placesKey;
       const client = this.donnees.client;
       if (!cle || !client) return null;
-      const f = await chercherFicheGoogle({ nom: client.nom, domaine: this.domaine, placeId: client.placeId, cle });
+      const f = await suivre("places", () => chercherFicheGoogle({ nom: client.nom, domaine: this.domaine, placeId: client.placeId, cle }));
       if (f && f.correspondance === "site" && f.id !== client.placeId) await this.donnees.onPlaceTrouvee?.(f.id).catch(() => null);
+      // Statut enregistré seulement pour une fiche identifiée avec certitude (place_id ou site identique)
+      if (f && f.correspondance !== "nom") await this.donnees.onStatutFiche?.(f.statut).catch(() => null);
       return f;
     });
   }
 
   get placesDisponible() { return !!this.opts.placesKey && !!this.donnees.client; }
+  /** Cause précise quand la fiche Google ne peut pas être consultée */
+  get placesCause() { return !this.opts.placesKey ? "Clé Google Places manquante — à renseigner dans Administration (État des services)." : !this.donnees.client ? "Scan sans client associé : fiche Google non recherchée." : null; }
 
   // ───────── Tunnel de réservation ─────────
 

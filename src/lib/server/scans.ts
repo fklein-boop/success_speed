@@ -86,6 +86,9 @@ export async function executerScan(db: DB, runId: number, opts: { dejaReserve?: 
       const proposition = { statut: r.statut, valeur: r.valeur ?? null, texte: r.texte, confiance: r.confiance, source: "scan", preuve };
       const valeur = r.valeur === undefined || r.valeur === null ? null : String(r.valeur);
       const e = existantes.get(critereId);
+      // Une donnée Speedmedia sûre (ex. TRK-01 mesuré par GA4) prime sur le scan
+      const prec = e?.proposition as { source?: string; statut?: string | null } | null;
+      if (e && prec?.source === "donnees" && prec.statut && e.confiance === "haute") continue;
       if (e) {
         await db.update(evaluations).set({ proposition, preuve, confiance: r.confiance, ...(e.statut === null ? { valeur, source: "auto" } : {}) }).where(eq(evaluations.id, e.id));
       } else {
@@ -129,6 +132,10 @@ async function donneesScan(db: DB, clientId: string): Promise<ScanDonnees> {
     // Fiche Google trouvée par le scan avec le même site web : enregistrée si aucune n'est encore validée
     onPlaceTrouvee: async (placeId) => {
       await db.update(clients).set({ googlePlaceId: placeId }).where(and(eq(clients.id, clientId), sql`${clients.googlePlaceId} is null`));
+    },
+    // Fiche fermée (définitivement : alerte rouge ; temporairement : orange) au prochain recalcul
+    onStatutFiche: async (statut) => {
+      await db.update(clients).set({ googleStatut: statut, googleStatutLe: new Date() }).where(eq(clients.id, clientId));
     },
   };
 }

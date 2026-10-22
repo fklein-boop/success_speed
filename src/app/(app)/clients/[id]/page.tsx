@@ -97,6 +97,13 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         </div>
       </header>
 
+      {(c.googleStatut === "CLOSED_PERMANENTLY" || c.googleStatut === "CLOSED_TEMPORARILY") && (
+        <p role="alert" className={`rounded-lg border p-3 text-sm ${c.googleStatut === "CLOSED_PERMANENTLY" ? "border-rouge/50 bg-rouge/10 text-rouge-texte" : "border-ambre/60 bg-ambre/15"}`}>
+          <strong>Fiche Google indiquée « {c.googleStatut === "CLOSED_PERMANENTLY" ? "définitivement fermé" : "temporairement fermé"} »</strong>
+          {c.googleStatutLe ? ` (relevé par le scan du ${fmtDate(c.googleStatutLe.toISOString())})` : ""}. {c.googleStatut === "CLOSED_PERMANENTLY" ? "Risque de départ : contactez le client." : "Vérifiez avec le client la date de réouverture."}
+        </p>
+      )}
+
       <HistoriqueAudits clientId={c.id} nom={c.nom} urls={urls.map((u) => u.url)} editable={editable} evolution={evolution}
         audits={listeAudits.map((a) => ({ id: a.id, date: a.date, statut: a.statut, origine: a.origine, mention: a.mention, score: a.score as ScoreResult | null, auteur: nomU(a.auteurId), assigne: nomU(a.assigneA) }))} />
 

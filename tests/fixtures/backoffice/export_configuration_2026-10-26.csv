@@ -1,0 +1,4 @@
+﻿IDagence;Migration Scylla;Date migration Scylla;Scylla vérifié;Date mise à jour KIT;Moyens de paiement;Paiement en ligne actif;3-D Secure actif;Paiement en plusieurs fois;Module assurance actif;Assureur;RésaLive actif;Connecteurs;Date dernier échange connecteur;Comptes B2B / CSE autonomes;Opt-in Veepee;Filtres flux TO actifs;Relance panier active;Dernière connexion back-office;Connexions back-office 30 j;Utilisateurs actifs 30 j;Date fin de contrat;Offre souscrite
+P17;oui;09/04/2026;oui;18/07/2026;PayBox|Virement|Chèques-vacances;oui;oui;oui;oui;Assureur Exemple;oui;RésaLive|CRM Exemple;24/10/2026;0;oui;oui;oui;25/10/2026;42;3;30/11/2027;Pack Performance
+S30;non;;non;17/08/2024;Virement;non;non;non;non;;non;;;0;éligible;non;non;28/06/2026;0;0;10/12/2026;Pack Essentiel
+A05;oui;26/09/2026;non;09/04/2026;PayBox;oui;non;non;oui;Assureur Exemple;non;CRM Exemple;01/09/2026;2;non;oui;non;23/10/2026;2;1;;Pack Essentiel

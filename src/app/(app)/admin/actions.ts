@@ -10,6 +10,7 @@ import { creerCritere, ecrireParametre, empreintes, supprimerParametre, versionn
 import { recomputeAll } from "@/lib/server/recompute";
 import { planifierRescanMensuel, traiterFileScans } from "@/lib/server/scans";
 import { effacerGa4, enregistrerConfigGa4 } from "@/lib/server/ga4";
+import { CLE_SOURCE_ABANDON } from "@/lib/server/backoffice";
 import { DEFAULT_METRICS_PARAMS } from "@/lib/metrics/params";
 import { GROUPES_PARAMS, depuisSaisie } from "@/lib/metrics/libelles";
 import offresConfig from "../../../../config/offres.json";
@@ -205,4 +206,14 @@ export async function effacerGa4Action(): Promise<Etat> {
   await effacerGa4(await getDb(), u.id);
   revalidatePath("/admin/google-analytics");
   return { ok: true, message: "Mesures Google Analytics supprimées. Réimportez le fichier GTM si besoin." };
+}
+
+// ───────── État des services ─────────
+
+export async function sourceAbandonAction(_: Etat, form: FormData): Promise<Etat> {
+  const u = await admin();
+  const v = form.get("source") === "dossiers" ? "dossiers" : "ga4";
+  await ecrireParametre(await getDb(), CLE_SOURCE_ABANDON, v, u.id);
+  revalidatePath("/admin/services");
+  return { ok: true, message: `Abandon panier calculé avec ${v === "ga4" ? "Google Analytics 4" : "l'export dossiers enrichi"} (à la prochaine ouverture des audits).` };
 }

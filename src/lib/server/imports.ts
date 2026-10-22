@@ -73,6 +73,8 @@ const toImport = (r: typeof dossiers.$inferSelect): DossierImport => ({
   idResa: r.idResa, idAgence: r.idAgence, producteur: r.producteur, voyage: r.voyage, nomAgence: r.nomAgence,
   fournisseur: r.fournisseur, date: r.date, heure: r.heure, pax: r.pax, statut: r.statut, origine: r.origine ?? "",
   total: r.total, encaisse: r.encaisse, erreurResalive: r.erreurResalive,
+  idProduit: r.idProduit, canal: r.canal, montantOptions: r.montantOptions, montantAssurance: r.montantAssurance,
+  dateConfirmation: r.dateConfirmation, emailRenseigne: r.emailRenseigne, payeEnLigne: r.payeEnLigne,
 });
 
 async function diffImport(db: DB, importId: number) {
@@ -199,6 +201,11 @@ export async function applyImport(db: DB, importId: number, userId: number | nul
         heure: sql`excluded.heure`, pax: sql`excluded.pax`, statut: sql`excluded.statut`, origine: sql`excluded.origine`,
         total: sql`excluded.total`, encaisse: sql`excluded.encaisse`, erreurResalive: sql`excluded.erreur_resalive`,
         importId: sql`excluded.import_id`, updatedAt: sql`excluded.updated_at`,
+        // Colonnes enrichies : un export sans ces colonnes ne les efface pas
+        idProduit: sql`coalesce(excluded.id_produit, ${dossiers.idProduit})`, canal: sql`coalesce(excluded.canal, ${dossiers.canal})`,
+        montantOptions: sql`coalesce(excluded.montant_options, ${dossiers.montantOptions})`, montantAssurance: sql`coalesce(excluded.montant_assurance, ${dossiers.montantAssurance})`,
+        dateConfirmation: sql`coalesce(excluded.date_confirmation, ${dossiers.dateConfirmation})`, emailRenseigne: sql`coalesce(excluded.email_renseigne, ${dossiers.emailRenseigne})`,
+        payeEnLigne: sql`coalesce(excluded.paye_en_ligne, ${dossiers.payeEnLigne})`,
       },
     });
   }
@@ -241,6 +248,9 @@ export async function undoLastImport(db: DB): Promise<{ importId: number; diff: 
         idAgence: sql`excluded.id_agence`, date: sql`excluded.date`, statut: sql`excluded.statut`, total: sql`excluded.total`,
         encaisse: sql`excluded.encaisse`, erreurResalive: sql`excluded.erreur_resalive`, origine: sql`excluded.origine`,
         pax: sql`excluded.pax`, importId: sql`excluded.import_id`, updatedAt: sql`excluded.updated_at`,
+        idProduit: sql`excluded.id_produit`, canal: sql`excluded.canal`, montantOptions: sql`excluded.montant_options`,
+        montantAssurance: sql`excluded.montant_assurance`, dateConfirmation: sql`excluded.date_confirmation`,
+        emailRenseigne: sql`excluded.email_renseigne`, payeEnLigne: sql`excluded.paye_en_ligne`,
       },
     });
   }

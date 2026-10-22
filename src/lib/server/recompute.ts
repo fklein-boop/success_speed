@@ -1,10 +1,11 @@
-import { and, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import type { DB } from "@/db";
-import { agenceAliases, alertes, audits, clients, scanResults, scanRuns, clientSnapshots, dossiers, metriquesClientMensuelles, parametres } from "@/db/schema";
+import { agenceAliases, alertes, audits, clients, rdv, scanResults, scanRuns, clientSnapshots, dossiers, metriquesClientMensuelles, parametres } from "@/db/schema";
 import { computePortfolio, monthlySeries, type ClientMetrics, type Dossier } from "@/lib/metrics/compute";
 import { mergeParams, type MetricsParams } from "@/lib/metrics/params";
 import { manqueAGagner, traficClient, type MoisWeb } from "@/lib/metrics/trafic";
 import { sitesEnPanne } from "./disponibilite";
+import { configsParClient, derniereConnexionParClient } from "./backoffice";
 
 export async function getMetricsParams(db: DB): Promise<MetricsParams> {
   const [p] = await db.select().from(parametres).where(eq(parametres.cle, "metrics"));
@@ -32,6 +33,8 @@ export async function loadDossiers(db: DB): Promise<Dossier[]> {
     .select({
       idAgence: dossiers.idAgence, idResa: dossiers.idResa, date: dossiers.date, statut: dossiers.statut,
       origine: dossiers.origine, total: dossiers.total, erreurResalive: dossiers.erreurResalive,
+      canal: dossiers.canal, idProduit: dossiers.idProduit, montantOptions: dossiers.montantOptions, montantAssurance: dossiers.montantAssurance,
+      emailRenseigne: dossiers.emailRenseigne, payeEnLigne: dossiers.payeEnLigne,
     })
     .from(dossiers);
   return rows.map((d) => ({ ...d, idAgence: alias.get(d.idAgence) ?? d.idAgence, origine: d.origine ?? "" }));
@@ -53,6 +56,7 @@ export async function recomputeAll(db: DB, importId: number | null = null): Prom
     params,
   );
   await ajouterAlertesAudit(db, metrics, params.alertes.baisseMaturitePoints);
+  await ajouterAlertesComptes(db, metrics, cl);
   if (reference) await ajouterTrafic(db, metrics, all, reference, params);
   const nom = new Map(cl.map((c) => [c.id, c.nom]));
   const before = new Map((await db.select().from(clientSnapshots)).map((s) => [s.clientId, s]));
@@ -120,7 +124,7 @@ async function syncAlertes(db: DB, metrics: ClientMetrics[], importId: number | 
       const k = `${m.id}|${a.code}`;
       current.add(k);
       const o = openKey.get(k);
-      if (!o) toInsert.push({ clientId: m.id, code: a.code, niveau: a.niveau, message: a.message, importId, source: a.code === "legal_non" || a.code === "baisse_maturite" ? "audit" : a.code === "module_absent" || a.code === "site_indisponible" ? "scan" : "donnees" });
+      if (!o) toInsert.push({ clientId: m.id, code: a.code, niveau: a.niveau, message: a.message, importId, source: a.code === "legal_non" || a.code === "baisse_maturite" ? "audit" : a.code === "module_absent" || a.code === "site_indisponible" || a.code === "fiche_google_fermee" ? "scan" : "donnees" });
       else if (o.message !== a.message || o.niveau !== a.niveau)
         await db.update(alertes).set({ message: a.message, niveau: a.niveau }).where(eq(alertes.id, o.id));
     }
@@ -175,6 +179,42 @@ async function ajouterAlertesAudit(db: DB, metrics: ClientMetrics[], baissePoint
     m.alertes.sort((a, b) => (a.niveau === b.niveau ? 0 : a.niveau === "critique" ? -1 : 1));
     m.alerte_principale = m.alertes[0]?.message ?? "";
     if (m.risque === "Sain" && m.alertes.length) m.risque = "À surveiller";
+  }
+}
+
+/**
+ * Alertes de compte (§ 4 et retours du 22/10) : échéance de contrat à moins de 90 jours sans rendez-vous planifié,
+ * aucune connexion au back-office depuis 30 jours (exports configuration / connexions), fiche Google fermée.
+ */
+async function ajouterAlertesComptes(db: DB, metrics: ClientMetrics[], cl: (typeof clients.$inferSelect)[]) {
+  const [configs, cnx, rdvs] = await Promise.all([
+    configsParClient(db), derniereConnexionParClient(db),
+    db.select({ clientId: rdv.clientId }).from(rdv).where(gte(rdv.date, new Date())),
+  ]);
+  const avecRdv = new Set(rdvs.map((r) => r.clientId));
+  const parId = new Map(cl.map((c) => [c.id, c]));
+  const auj = Date.now();
+  const jours = (iso: string) => Math.round((Date.parse(`${iso}T12:00:00Z`) - auj) / 86400_000);
+  const fr = (iso: string) => iso.split("-").reverse().join("/");
+  for (const m of metrics) {
+    const c = parId.get(m.id);
+    const conf = configs.get(m.id);
+    const fin = conf?.dateFinContrat ?? c?.echeanceContrat ?? null;
+    if (fin) {
+      const j = jours(fin);
+      if (j >= 0 && j <= 90 && !avecRdv.has(m.id)) m.alertes.unshift({ niveau: "critique", code: "contrat_echeance", message: `Fin de contrat le ${fr(fin)} (dans ${j} jours) sans rendez-vous planifié` });
+    }
+    // Connexions : export connexions en priorité, sinon colonnes de la configuration
+    const derniere = [cnx.get(m.id), conf?.derniereConnexionBo ?? null].filter((x): x is string => !!x).sort().at(-1) ?? null;
+    const sansConnexion = derniere ? jours(derniere) < -30 : !!conf && !((conf.connexions30j ?? 0) > 0);
+    if (sansConnexion)
+      m.alertes.unshift({ niveau: "critique", code: "sans_connexion_bo", message: derniere ? `Aucune connexion au back-office depuis le ${fr(derniere)}` : "Aucune connexion au back-office depuis 30 jours" });
+    if (c?.googleStatut === "CLOSED_PERMANENTLY") m.alertes.unshift({ niveau: "critique", code: "fiche_google_fermee", message: "Fiche Google indiquée « définitivement fermé »" });
+    else if (c?.googleStatut === "CLOSED_TEMPORARILY") m.alertes.push({ niveau: "surveiller", code: "fiche_google_fermee", message: "Fiche Google indiquée « temporairement fermé »" });
+    if (m.alertes.some((a) => a.niveau === "critique")) m.risque = "Critique";
+    else if (m.risque === "Sain" && m.alertes.length) m.risque = "À surveiller";
+    m.alertes.sort((a, b) => (a.niveau === b.niveau ? 0 : a.niveau === "critique" ? -1 : 1));
+    m.alerte_principale = m.alertes[0]?.message ?? "";
   }
 }
 

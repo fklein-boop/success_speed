@@ -1,6 +1,7 @@
 import { statutFromSeuil } from "@/lib/audit/score";
 import { liens, metaContent } from "../html";
 import { nonVerifiable, type Detecteur } from "../types";
+import { lienAvis } from "../places";
 
 export const VIS07: Detecteur = {
   critereId: "VIS-07",
@@ -81,20 +82,23 @@ export const VIS01: Detecteur = {
   },
 };
 
+const fermeture = (p: { statut: string | null }) => (p.statut === "CLOSED_PERMANENTLY" ? " Fiche indiquée « définitivement fermé » par Google." : p.statut === "CLOSED_TEMPORARILY" ? " Fiche indiquée « temporairement fermé » par Google." : "");
+
 export const VIS02: Detecteur = {
   critereId: "VIS-02",
   libelle: "Fiche Google : note ≥ 4,3 et ≥ 50 avis",
   async run(ctx) {
-    if (!ctx.placesDisponible) return nonVerifiable("Clé Google Places non configurée : note et nombre d'avis à relever par le CSM.");
-    const place = await ctx.place();
-    if (!place) return nonVerifiable("Fiche Google Business Profile introuvable : à identifier par le CSM.");
+    if (!ctx.placesDisponible) return nonVerifiable(ctx.placesCause ?? "Fiche Google non consultée.");
+    let place;
+    try { place = await ctx.place(); } catch (e) { return nonVerifiable(`Fiche Google non consultée : ${e instanceof Error ? e.message : "erreur Google Places"}. Vérifiez la clé dans Administration (État des services).`); }
+    if (!place) return nonVerifiable("Fiche Google Business Profile introuvable par l'API (ni par le nom, ni par le domaine) : à identifier par le CSM.");
     const texteFiche = `${place.note !== null ? `${String(place.note).replace(".", ",")}/5` : "pas de note"} sur ${place.nbAvis} avis.`;
-    const preuve = { texte: `${fichePreuve(place)} ${texteFiche}`, url: place.urlMaps ?? undefined, source: "Google Places" };
+    const preuve = { texte: `${fichePreuve(place)} ${texteFiche}${fermeture(place)}`, url: place.urlMaps ?? undefined, source: "Google Places" };
     const confiance = place.correspondance === "nom" ? "basse" : "haute";
-    if (place.note === null) return { statut: "NON", valeur: null, texte: "Fiche Google sans note (aucun avis).", confiance, preuve };
+    if (place.note === null) return { statut: "NON", valeur: null, texte: `Fiche Google sans note (aucun avis).${fermeture(place)}`, confiance, preuve };
     let statut = statutFromSeuil(place.note, { sens: "↑", seuilPlein: 4.3, seuilMoitie: 4.0 });
     if (statut === "OUI" && place.nbAvis < 50) statut = "PARTIELLEMENT";
-    return { statut, valeur: place.note, texte: `Fiche Google : ${texteFiche}${place.nbAvis < 50 ? " Moins de 50 avis." : ""}`, confiance, preuve };
+    return { statut, valeur: place.note, texte: `Fiche Google : ${texteFiche}${place.nbAvis < 50 ? " Moins de 50 avis." : ""}${fermeture(place)}`, confiance, preuve };
   },
 };
 
@@ -102,11 +106,12 @@ export const VIS03: Detecteur = {
   critereId: "VIS-03",
   libelle: "Réponse aux avis Google",
   async run(ctx) {
-    if (!ctx.placesDisponible) return nonVerifiable("Clé Google Places non configurée : réponses aux avis à vérifier par le CSM.");
-    const place = await ctx.place().catch(() => null);
-    if (!place) return nonVerifiable("Fiche Google Business Profile introuvable : à identifier par le CSM.");
-    // L'API Google Places ne renvoie pas les réponses du propriétaire : vérification manuelle
-    const recents = place.avis.filter((a) => a.date && Date.parse(a.date) > Date.now() - 183 * 86400_000).length;
-    return nonVerifiable(`Réponses du propriétaire non fournies par l'API Google : à vérifier sur la fiche (${place.avis.length} avis renvoyés par l'API, dont ${recents} de moins de 6 mois).`, { url: place.urlMaps ?? undefined, texte: `${fichePreuve(place)} L'API Google Places (5 avis maximum) n'indique pas si le propriétaire a répondu : ouvrir la fiche pour compter les réponses sur 6 mois.`, source: "Google Places" });
+    if (!ctx.placesDisponible) return nonVerifiable(`${ctx.placesCause ?? "Fiche Google non consultée."} Ouvrez la fiche Google : sur les 10 derniers avis, combien ont une réponse de l'agence ?`);
+    let place;
+    try { place = await ctx.place(); } catch (e) { return nonVerifiable(`Fiche Google non consultée : ${e instanceof Error ? e.message : "erreur Google Places"}. Comptez les réponses sur la fiche à la main.`); }
+    if (!place) return nonVerifiable("Fiche Google Business Profile introuvable : à identifier par le CSM, puis comptez les réponses sur les 10 derniers avis.");
+    // L'API Google Places ne renvoie pas les réponses du propriétaire : comptage guidé par le CSM
+    const texte = `Fiche trouvée : ${place.note !== null ? `${String(place.note).replace(".", ",")}/5` : "pas de note"} sur ${place.nbAvis} avis.${fermeture(place)} Ouvrez les 10 derniers avis : combien ont une réponse de l'agence ? (Google ne fournit pas les réponses par son API.)`;
+    return nonVerifiable(texte, { url: lienAvis(place), texte: `${fichePreuve(place)} ${texte}`, source: "Google Places — lien direct vers les avis" });
   },
 };

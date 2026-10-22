@@ -76,6 +76,9 @@ export const clients = pgTable("clients", {
   siren: text("siren"),
   /** Identifiant de la fiche Google Business Profile (API Places), validé par le CSM ou trouvé par le scan */
   googlePlaceId: text("google_place_id"),
+  /** Statut de la fiche Google (OPERATIONAL, CLOSED_TEMPORARILY, CLOSED_PERMANENTLY), relevé par le scan */
+  googleStatut: text("google_statut"),
+  googleStatutLe: timestamp("google_statut_le", { withTimezone: true }),
   /** Compte sans dossiers dans l'export (site fourni à part) */
   horsExport: boolean("hors_export").notNull().default(false),
   actif: boolean("actif").notNull().default(true),
@@ -138,9 +141,72 @@ export const dossiers = pgTable("dossiers", {
   total: doublePrecision("total").notNull().default(0),
   encaisse: doublePrecision("encaisse").notNull().default(0),
   erreurResalive: boolean("erreur_resalive").notNull().default(false),
+  /** Colonnes de l'export enrichi (08_DEMANDES_EQUIPES_EXPORTS § 1) : null tant qu'elles ne sont pas livrées */
+  idProduit: text("id_produit"),
+  /** Canal : site web, back-office agence, RésaLive, API, marketplace (colonne « Origine ») */
+  canal: text("canal"),
+  montantOptions: doublePrecision("montant_options"),
+  montantAssurance: doublePrecision("montant_assurance"),
+  dateConfirmation: date("date_confirmation"),
+  /** Le voyageur a saisi un email avant d'abandonner (oui/non, jamais l'adresse) */
+  emailRenseigne: boolean("email_renseigne"),
+  payeEnLigne: doublePrecision("paye_en_ligne"),
   importId: integer("import_id").references(() => imports.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index("dossiers_agence_idx").on(t.idAgence), index("dossiers_date_idx").on(t.date)]);
+
+// ───────────────────────── Exports back-office (lot A3) ─────────────────────────
+
+/** Catalogue produits : photo complète, remplacée à chaque import */
+export const catalogueProduits = pgTable("catalogue_produits", {
+  idAgence: text("id_agence").notNull(),
+  idProduit: text("id_produit").notNull(),
+  titre: text("titre"),
+  type: text("type"),
+  /** production interne | flux TO | réseau S01 */
+  source: text("source"),
+  enLigne: boolean("en_ligne"),
+  partageS01: boolean("partage_s01"),
+  dateMaj: date("date_maj"),
+  departsFuturs: integer("departs_futurs"),
+  stockGere: boolean("stock_gere"),
+  prixAdulte: boolean("prix_adulte"),
+  prixEnfant: boolean("prix_enfant"),
+  nbSupplements: integer("nb_supplements"),
+  nbOptions: integer("nb_options"),
+  assurance: boolean("assurance"),
+  nbPhotos: integer("nb_photos"),
+  veepee: boolean("veepee"),
+  importId: integer("import_id").references(() => imports.id),
+}, (t) => [primaryKey({ columns: [t.idAgence, t.idProduit] })]);
+
+/** Configuration des comptes : une ligne par client (valeurs typées dans `data`) */
+export const configComptes = pgTable("config_comptes", {
+  idAgence: text("id_agence").primaryKey(),
+  data: jsonb("data").notNull(),
+  importId: integer("import_id").references(() => imports.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/** Connexions au back-office : une ligne par client et par jour, sans nom d'utilisateur */
+export const connexionsBo = pgTable("connexions_bo", {
+  idAgence: text("id_agence").notNull(),
+  date: date("date").notNull(),
+  nbConnexions: integer("nb_connexions").notNull().default(0),
+  nbUtilisateurs: integer("nb_utilisateurs"),
+}, (t) => [primaryKey({ columns: [t.idAgence, t.date] })]);
+
+/** Transactions PayBox (export mensuel), rapprochées des dossiers par IDresa */
+export const transactionsPaybox = pgTable("transactions_paybox", {
+  reference: text("reference").primaryKey(),
+  idAgence: text("id_agence").notNull(),
+  date: date("date").notNull(),
+  idResa: text("id_resa"),
+  montant: doublePrecision("montant"),
+  statut: text("statut"),
+  troisDs: boolean("trois_ds"),
+  importId: integer("import_id").references(() => imports.id),
+}, (t) => [index("paybox_agence_idx").on(t.idAgence)]);
 
 /** État d'un dossier avant un import (null = créé par l'import) — permet l'annulation */
 export const dossierChanges = pgTable("dossier_changes", {

@@ -470,3 +470,31 @@ Durée totale : 52 à 136 s, sous l'objectif de 3 minutes. Avec PageSpeed, Claud
 - **Première connexion** : avec un mot de passe provisoire, toutes les pages renvoient vers « Choisissez votre mot de passe » (et les actions sont refusées) tant qu'il n'est pas remplacé. Ensuite, l'icône clé de l'en-tête permet de le changer ; les autres sessions sont alors fermées.
 - **Règles** : 12 caractères au moins, pas l'identifiant, pas de mot de passe évident. Stockage scrypt salé (N = 2^15), jamais en clair ; comparaison en temps constant, durée de réponse identique pour une adresse inconnue.
 - **Anti-force brute** : 5 échecs en 15 minutes sur une adresse bloquent les essais 15 minutes (100 échecs tous comptes confondus bloquent tout le monde 15 minutes). Échecs, créations et changements sont journalisés.
+
+## Lot A — retours du test du 22/10/2026 : ne plus demander à la main ce que les données savent
+
+**A1. Cause trouvée.** S30 n'a plus aucun dossier depuis mai 2025 : le calcul s'arrêtait dès que le client n'avait aucun dossier sur 12 mois (`dossiers_12m === 0`), et tous les critères « Données » retombaient dans « Répondre au reste ». Désormais, PERF-05, PERF-06, PERF-12, RES-04, RES-05 et SOC-07 ont **toujours** un statut en confiance haute, avec une phrase :
+- aucune vente sur les deux périodes → NON ; volume nul cette année mais pas l'an dernier → NON ;
+- historique insuffisant (premier dossier moins de 15 mois avant la date des données, ou aucun dossier) → N.A. ;
+- ventes cette année et aucune l'an dernier (client ancien) → OUI.
+Les propositions sont **rafraîchies à chaque ouverture d'un brouillon** (nouvel export, GA4) sans toucher aux réponses déjà données ; une donnée sûre (confiance haute) n'est plus écrasée par le scan (ex. TRK-01 par GA4).
+
+**A2.** PERF-04 = confirmés ÷ visites (dossiers « site web » seulement dès que la colonne `Origine` est livrée), sinon « non vérifiable — trafic inconnu » avec un lien vers l'écran Google Analytics (dans « À valider », jamais en question). TRK-01 = OUI en confiance haute si la propriété GA4 commune reçoit des sessions pour le client.
+
+**A3. Exports back-office.** La mise à jour du lundi accepte plusieurs fichiers déposés ensemble ; chaque fichier est reconnu **à ses colonnes** (dossiers, catalogue, configuration, connexions, PayBox) ; un seul aperçu récapitule tout. Colonnes manquantes → écran de correspondance, mémorisé par type d'export. Catalogue et configuration = photos complètes (remplacées) ; connexions et PayBox s'ajoutent. Envoi par morceaux de 2 000 lignes (limite de taille des requêtes Vercel). Les 7 colonnes de l'export dossiers enrichi sont facultatives : un export sans elles n'efface pas les valeurs déjà connues. Fichiers d'exemple fictifs : `tests/fixtures/backoffice/`. Tant qu'un export n'est pas livré, ses critères restent manuels avec la mention « En attente de l'export … ».
+
+**A4. Règles retenues** (module `src/lib/audit/backoffice.ts`) :
+- PROD-02 : produits internes en ligne avec prix adulte **et** prix enfant, 90 % / 60 %. L'export ne dit pas si un prix enfant est « applicable » : un produit adultes seulement compte comme incomplet. *À trancher : ajouter une colonne « Prix enfant applicable », ou ne compter que le prix adulte.*
+- PROD-05 50 % / 20 % ; PROD-06, PROD-08, PERF-03, PERF-08 : seuils existants. PROD-07 : module actif et ≥ 50 % des produits avec assurance = OUI, module actif sinon = PARTIEL.
+- **RES-02 et RES-03 (seuils proposés, à valider)** : RES-02 ≥ 30 % des produits internes partagés sur S01 = OUI, ≥ 10 % = PARTIEL ; RES-03 ≥ 10 % des produits en ligne venant de S01 = OUI, ≥ 3 % = PARTIEL.
+- SOC-01 : CRM ou ERP connecté avec un échange de moins de 7 jours = OUI, connecté sans échange récent = PARTIEL. SOC-06 : migration seule = PARTIEL. DIST-01 : « éligible » sans opt-in = NON (« à proposer »).
+- SOC-04 : dossiers payés en ligne sur la période couverte par l'export PayBox ; ≥ 98 % avec transaction acceptée = OUI, ≥ 90 % = PARTIEL ; les écarts (IDresa) sont listés.
+- SOC-08 : 4 semaines sur 4 avec connexion, ou ≥ 4 connexions sur 30 j = OUI ; au moins une = PARTIEL.
+- PERF-02 : proposé en confiance moyenne (à confirmer par le CSM). PERF-07 : source réglable dans Administration → État des services (GA4 par défaut, en attendant la réponse de Martin) ; avec l'export, abandon = paniers avec email non confirmés ÷ paniers avec email (12 mois, 20 au moins).
+- **Alertes** : fin de contrat (export configuration, à défaut l'échéance de la fiche) dans moins de 90 jours sans rendez-vous futur → rouge ; aucune connexion au back-office depuis 30 jours → rouge.
+
+**A5.** Le scan enregistre `businessStatus` de la fiche Google (seulement si la fiche est identifiée par place_id ou site identique) : « définitivement fermé » → alerte rouge et bandeau sur la fiche client ; « temporairement fermé » → orange.
+
+**A6.** VIS-02/VIS-03 donnent la cause exacte : « Clé Google Places manquante — à renseigner dans Administration (État des services) », clé refusée par Google (message de l'API), ou fiche introuvable. En production, la clé était bien renseignée depuis le 19/10 : si VIS-02 reste vide, l'écran « État des services » affiche désormais l'erreur renvoyée par Google (souvent *Places API (New)* non activée sur la clé). VIS-03 reste manuel : lien direct vers les avis, note et nombre d'avis, et un champ « sur les 10 derniers avis, combien ont une réponse ? » qui calcule le statut (80 % / 50 %). Nouvel écran **Administration → État des services** : chaque clé, le worker et les exports, configuré ou non, dernier succès, dernier échec et critères dépendants.
+
+**Effet mesuré (démo locale, export réel du lundi + exports d'exemple)** : critères pré-remplis avec un statut avant → après : S30 0 → 24, P17 6 → 24 (23 en confiance haute). Avec le seul export dossiers réel (sans les exports à venir), S30 passe de 0 à 6 et PERF-04 / TRK-01 s'ajoutent dès que GA4 est synchronisé.

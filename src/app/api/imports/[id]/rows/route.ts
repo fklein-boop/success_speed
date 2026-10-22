@@ -11,6 +11,10 @@ const Row = z.object({
   voyage: z.string().nullable(), nomAgence: z.string().nullable(), fournisseur: z.string().nullable(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), heure: z.string().nullable(), pax: z.number().nullable(),
   statut: z.string().min(1), origine: z.string(), total: z.number(), encaisse: z.number(), erreurResalive: z.boolean(),
+  idProduit: z.string().max(100).nullable().optional(), canal: z.string().max(60).nullable().optional(),
+  montantOptions: z.number().nullable().optional(), montantAssurance: z.number().nullable().optional(),
+  dateConfirmation: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(), emailRenseigne: z.boolean().nullable().optional(),
+  payeEnLigne: z.number().nullable().optional(),
 });
 const Body = z.object({ rows: z.array(Row).max(10000) });
 

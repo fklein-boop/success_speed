@@ -29,6 +29,8 @@ export interface Trafic {
   debuts_reservation_mensuels: number | null;
   ca_web_mensuel: number | null;
   abandon_reference: number | null;
+  /** Conversion des seuls dossiers d'origine « site web » (export enrichi, colonne « Origine ») */
+  conversion_site: number | null;
 }
 
 /** Données GA4 d'un mois (null = non mesuré) */
@@ -40,7 +42,7 @@ export const DEBUTS_MIN_ABANDON = 30;
 export const TRAFIC_VIDE: Trafic = {
   mois_trafic: 0, periode_trafic: null, visites_mensuelles: null, conversion: null, conversion_demandes: null,
   panier_moyen_confirme: null, conversion_reference: null, conversion_reference_source: null, manque_a_gagner_mensuel: null,
-  source_trafic: null, conversion_web: null, abandon_panier: null, debuts_reservation_mensuels: null, ca_web_mensuel: null, abandon_reference: null,
+  source_trafic: null, conversion_web: null, abandon_panier: null, debuts_reservation_mensuels: null, ca_web_mensuel: null, abandon_reference: null, conversion_site: null,
 };
 
 /** Trafic d'un client : `visites` = mois AAAA-MM → visites ; `web` = mois mesurés par GA4 ; `reference` = date des données. */
@@ -53,10 +55,11 @@ export function traficClient(m: ClientMetrics, rows: Dossier[], visites: Map<str
   if (!mois.length) return { ...TRAFIC_VIDE };
   const set = new Set(mois);
   const confirmes = new Set(params.statutsConfirmes), annules = new Set(params.statutsAnnules);
-  let nConf = 0, nDem = 0;
+  let nConf = 0, nDem = 0, nConfSite = 0, avecCanal = false;
   for (const d of rows) {
     if (!set.has(d.date.slice(0, 7))) continue;
-    if (confirmes.has(d.statut)) nConf++;
+    if (d.canal) avecCanal = true;
+    if (confirmes.has(d.statut)) { nConf++; if (d.canal === "site web") nConfSite++; }
     if (!annules.has(d.statut)) nDem++;
   }
   const totalVisites = mois.reduce((s, k) => s + (visites.get(k) ?? 0), 0);
@@ -82,6 +85,7 @@ export function traficClient(m: ClientMetrics, rows: Dossier[], visites: Map<str
     abandon_panier: debuts >= DEBUTS_MIN_ABANDON ? Math.max(0, 1 - achatsDebuts / debuts) : null,
     debuts_reservation_mensuels: moisDebuts.length ? Math.round(debuts / moisDebuts.length) : null,
     ca_web_mensuel: moisWeb.length && ca > 0 ? ca / moisWeb.length : null,
+    conversion_site: avecCanal ? nConfSite / totalVisites : null,
   };
 }
 

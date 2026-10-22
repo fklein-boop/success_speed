@@ -1,0 +1,30 @@
+﻿IDagence;ID produit;Titre;Type;Source;Fournisseur;En ligne;Partagé sur S01;Date de création;Date de dernière mise à jour;Départs futurs ouverts;Prochain départ;Stock géré;Prix adulte;Prix enfant;Nb suppléments;Nb options;Assurance associée;Nb photos;Publié sur Veepee
+P17;P17-001;Circuit fictif 1;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-002;Circuit fictif 2;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-003;Circuit fictif 3;circuit;production interne;;oui;oui;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-004;Circuit fictif 4;circuit;production interne;;oui;non;21/09/2025;06/10/2026;0;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-005;Circuit fictif 5;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-006;Circuit fictif 6;circuit;production interne;;oui;oui;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-007;Circuit fictif 7;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-008;Circuit fictif 8;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-009;Circuit fictif 9;circuit;production interne;;oui;oui;21/09/2025;06/10/2026;0;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-010;Circuit fictif 10;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-011;Circuit fictif 11;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;oui;8;non
+P17;P17-012;Circuit fictif 12;circuit;production interne;;oui;oui;21/09/2025;06/10/2026;5;25/11/2026;oui;oui;oui;2;1;non;8;non
+P17;P17-013;Circuit fictif 13;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;non;oui;oui;2;0;non;8;non
+P17;P17-014;Circuit fictif 14;circuit;production interne;;oui;non;21/09/2025;06/10/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+P17;P17-015;Circuit fictif 15;circuit;réseau S01;TO Exemple;oui;non;21/09/2025;06/10/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+P17;P17-016;Circuit fictif 16;circuit;réseau S01;TO Exemple;oui;non;21/09/2025;09/04/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+P17;P17-017;Circuit fictif 17;circuit;réseau S01;TO Exemple;oui;non;21/09/2025;09/04/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+P17;P17-018;Circuit fictif 18;circuit;flux TO;TO Exemple;oui;non;21/09/2025;09/04/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+P17;P17-019;Circuit fictif 19;circuit;flux TO;TO Exemple;oui;non;21/09/2025;09/04/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+P17;P17-020;Circuit fictif 20;circuit;flux TO;TO Exemple;non;non;21/09/2025;09/04/2026;5;25/11/2026;non;oui;non;2;0;non;8;non
+S30;S30-001;Séjour ancien 1;séjour;production interne;;non;non;09/05/2024;25/11/2024;0;;non;oui;non;0;0;non;2;non
+S30;S30-002;Séjour ancien 2;séjour;production interne;;non;non;09/05/2024;25/11/2024;0;;non;oui;non;0;0;non;2;non
+S30;S30-003;Séjour ancien 3;séjour;production interne;;non;non;09/05/2024;25/11/2024;0;;non;oui;non;0;0;non;2;non
+A05;A05-001;Voyage Asie 1;circuit;production interne;;oui;non;30/12/2025;27/08/2026;3;;oui;oui;oui;1;2;oui;6;oui
+A05;A05-002;Voyage Asie 2;circuit;production interne;;oui;non;30/12/2025;27/08/2026;3;;oui;oui;oui;1;2;oui;6;oui
+A05;A05-003;Voyage Asie 3;circuit;production interne;;oui;non;30/12/2025;27/08/2026;3;;oui;oui;oui;1;2;oui;6;oui
+A05;A05-004;Voyage Asie 4;circuit;production interne;;oui;non;30/12/2025;27/08/2026;3;;oui;oui;oui;1;2;oui;6;oui
+A05;A05-005;Voyage Asie 5;circuit;production interne;;oui;non;30/12/2025;27/08/2026;3;;oui;oui;oui;1;2;oui;6;oui
+ZZ99;ZZ99-001;Produit d'une agence inconnue;séjour;production interne;;oui;non;;;1;;non;oui;non;0;0;non;1;non

@@ -54,6 +54,8 @@ export interface ScanDonnees {
   empreintes?: { a_valider: boolean; speedresa: { nom: string; motif: string; force?: string }[]; concurrents: { nom: string; motif: string; force?: string }[] };
   /** Appelé quand la fiche Google du client est identifiée de façon sûre (site web identique) */
   onPlaceTrouvee?: (placeId: string) => Promise<void>;
+  /** Statut de la fiche Google (fermée définitivement ou temporairement) : alerte et bandeau sur la fiche client */
+  onStatutFiche?: (statut: string | null) => Promise<void>;
 }
 
 export class SiteProtegeError extends Error {

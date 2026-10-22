@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { suivre } from "@/lib/services/etat";
 
 /**
  * Analyse de texte par Claude (API Anthropic), en sortie structurée validée par un schéma.
@@ -40,14 +41,14 @@ export async function analyserIa<T>(opts: {
   const parDoc = Math.floor(max / Math.max(1, opts.documents.length));
   const docs = opts.documents.map((d) => `<document titre="${echapper(d.titre).replace(/"/g, "'")}"${d.url ? ` url="${d.url}"` : ""}>\n${echapper(d.texte).slice(0, parDoc)}\n</document>`).join("\n\n");
   const { $schema: _ignore, ...inputSchema } = z.toJSONSchema(opts.schema) as Record<string, unknown>;
-  const r = await anthropic().messages.create({
+  const r = await suivre("anthropic", () => anthropic().messages.create({
     model: modeleIa(),
     max_tokens: opts.maxTokens ?? 2000,
     system: opts.systeme ?? SYSTEME,
     tools: [{ name: opts.outil, description: "Enregistre le résultat de l'analyse.", input_schema: inputSchema as Anthropic.Tool.InputSchema }],
     tool_choice: { type: "tool", name: opts.outil },
     messages: [{ role: "user", content: `${opts.consigne}\n\n${docs}` }],
-  });
+  }));
   const bloc = r.content.find((c) => c.type === "tool_use");
   if (!bloc || bloc.type !== "tool_use") throw new Error("Réponse de Claude sans résultat structuré");
   return opts.schema.parse(bloc.input);
@@ -59,13 +60,13 @@ export async function analyserIa<T>(opts: {
  */
 export async function rechercheIa(question: string): Promise<{ texte: string; sources: string[] }> {
   if (!iaDisponible()) throw new Error("Clé ANTHROPIC_API_KEY absente");
-  const r = await anthropic().messages.create({
+  const r = await suivre("anthropic", () => anthropic().messages.create({
     model: modeleIa(),
     max_tokens: 1500,
     system: "Tu es un assistant de voyage. Réponds en français comme tu le ferais pour un internaute, en citant des agences ou sites précis quand c'est pertinent.",
     tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 2, user_location: { type: "approximate", country: "FR" } }],
     messages: [{ role: "user", content: question }],
-  });
+  }));
   const texte = r.content.filter((c) => c.type === "text").map((c) => (c as { text: string }).text).join("\n");
   const sources = new Set<string>();
   for (const c of r.content) {

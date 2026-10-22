@@ -1,6 +1,7 @@
 import "server-only";
 import { createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { suivre } from "@/lib/services/etat";
 
 /**
  * Accès en lecture à Google Analytics 4 par un compte de service (audit-csm@….iam.gserviceaccount.com).
@@ -58,6 +59,10 @@ async function jeton(): Promise<string> {
 }
 
 async function appel<T>(url: string, body?: unknown): Promise<T> {
+  return suivre("ga4", () => appelBrut<T>(url, body));
+}
+
+async function appelBrut<T>(url: string, body?: unknown): Promise<T> {
   const r = await fetcher(url, {
     method: body ? "POST" : "GET",
     headers: { authorization: `Bearer ${await jeton()}`, ...(body ? { "content-type": "application/json" } : {}) },

@@ -4,13 +4,13 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Upload } from "lucide-react";
 import { ImportDialog, type ClientOption } from "./ImportDialog";
 
-const Ctx = createContext<{ ouvrir: (f?: File) => void; autorise: boolean }>({ ouvrir: () => {}, autorise: false });
+const Ctx = createContext<{ ouvrir: (f?: File[]) => void; autorise: boolean }>({ ouvrir: () => {}, autorise: false });
 export const useImport = () => useContext(Ctx);
 
 /** Zone de glisser-déposer accessible depuis n'importe quel écran (si l'utilisateur peut importer). */
 export function ImportProvider({ autorise, clients, children }: { autorise: boolean; clients: ClientOption[]; children: React.ReactNode }) {
   const [ouvert, setOuvert] = useState(false);
-  const [fichier, setFichier] = useState<File | null>(null);
+  const [fichiers, setFichiers] = useState<File[]>([]);
   const [survol, setSurvol] = useState(false);
 
   useEffect(() => {
@@ -25,8 +25,8 @@ export function ImportProvider({ autorise, clients, children }: { autorise: bool
       e.preventDefault();
       depth = 0;
       setSurvol(false);
-      const f = e.dataTransfer?.files[0];
-      if (f && !ouvert) { setFichier(f); setOuvert(true); }
+      const f = Array.from(e.dataTransfer?.files ?? []);
+      if (f.length && !ouvert) { setFichiers(f); setOuvert(true); }
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragleave", leave);
@@ -41,17 +41,17 @@ export function ImportProvider({ autorise, clients, children }: { autorise: bool
   }, [autorise, ouvert]);
 
   return (
-    <Ctx.Provider value={{ autorise, ouvrir: (f) => { setFichier(f ?? null); setOuvert(true); } }}>
+    <Ctx.Provider value={{ autorise, ouvrir: (f) => { setFichiers(f ?? []); setOuvert(true); } }}>
       {children}
       {survol && !ouvert && (
         <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-horizon/15 p-6">
           <div className="carte flex flex-col items-center gap-3 border-2 border-dashed border-horizon p-10 shadow-xl">
             <Upload className="text-horizon" size={36} aria-hidden />
-            <p className="font-titres text-lg font-bold">Déposez l&apos;extract pour mettre à jour les chiffres</p>
+            <p className="font-titres text-lg font-bold">Déposez l&apos;extract (et les exports back-office) pour mettre à jour les chiffres</p>
           </div>
         </div>
       )}
-      {ouvert && <ImportDialog file={fichier} clients={clients} onClose={() => { setOuvert(false); setFichier(null); }} />}
+      {ouvert && <ImportDialog files={fichiers} clients={clients} onClose={() => { setOuvert(false); setFichiers([]); }} />}
     </Ctx.Provider>
   );
 }

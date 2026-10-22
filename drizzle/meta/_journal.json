@@ -57,6 +57,13 @@
       "when": 1792501726383,
       "tag": "0007_mots_de_passe",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792668593606,
+      "tag": "0008_exports_backoffice",
+      "breakpoints": true
     }
   ]
 }

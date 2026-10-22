@@ -14,11 +14,13 @@ export interface FicheGoogle {
   site: string | null;
   urlMaps: string | null;
   avis: { note: number; date: string | null; texte: string }[];
+  /** OPERATIONAL, CLOSED_TEMPORARILY ou CLOSED_PERMANENTLY (businessStatus de l'API) */
+  statut: string | null;
   /** Comment la fiche a été identifiée : place_id enregistré, site web identique, ou nom seul (à confirmer) */
   correspondance: "place_id" | "site" | "nom";
 }
 
-const CHAMPS = ["id", "displayName", "formattedAddress", "rating", "userRatingCount", "websiteUri", "googleMapsUri", "reviews"];
+const CHAMPS = ["id", "displayName", "formattedAddress", "rating", "userRatingCount", "websiteUri", "googleMapsUri", "reviews", "businessStatus"];
 
 interface PlaceApi {
   id: string;
@@ -29,6 +31,7 @@ interface PlaceApi {
   websiteUri?: string;
   googleMapsUri?: string;
   reviews?: { rating?: number; publishTime?: string; text?: { text?: string } }[];
+  businessStatus?: string;
 }
 
 const versFiche = (p: PlaceApi, correspondance: FicheGoogle["correspondance"]): FicheGoogle => ({
@@ -40,6 +43,7 @@ const versFiche = (p: PlaceApi, correspondance: FicheGoogle["correspondance"]): 
   site: p.websiteUri ?? null,
   urlMaps: p.googleMapsUri ?? null,
   avis: (p.reviews ?? []).map((a) => ({ note: a.rating ?? 0, date: a.publishTime ?? null, texte: (a.text?.text ?? "").slice(0, 300) })),
+  statut: p.businessStatus ?? null,
   correspondance,
 });
 
@@ -82,3 +86,7 @@ export async function chercherFicheGoogle(opts: { nom: string; domaine: string; 
   }
   return candidat;
 }
+
+/** Lien direct vers les avis de la fiche (pour compter les réponses du propriétaire, que l'API ne donne pas). */
+export const lienAvis = (f: { id: string }) => `https://search.google.com/local/reviews?placeid=${encodeURIComponent(f.id)}`;
+export const STATUTS_FICHE: Record<string, string> = { CLOSED_PERMANENTLY: "définitivement fermé", CLOSED_TEMPORARILY: "temporairement fermé", OPERATIONAL: "ouvert" };

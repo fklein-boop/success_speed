@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { noterService } from "@/lib/services/etat";
 
 export interface Email {
   to: string | string[];
@@ -22,6 +23,7 @@ export async function sendEmail(e: Email): Promise<{ ok: boolean; erreur?: strin
       return { ok: true };
     }
     console.error("RESEND_API_KEY absente : email non envoyé");
+    void noterService("resend", false, "RESEND_API_KEY absente : email non envoyé");
     return { ok: false, erreur: "Service d'email non configuré" };
   }
   const resend = new Resend(key);
@@ -36,8 +38,10 @@ export async function sendEmail(e: Email): Promise<{ ok: boolean; erreur?: strin
   });
   if (error) {
     console.error("Envoi email échoué :", error.name);
+    void noterService("resend", false, error.message);
     return { ok: false, erreur: error.message };
   }
+  void noterService("resend", true);
   return { ok: true };
 }
 

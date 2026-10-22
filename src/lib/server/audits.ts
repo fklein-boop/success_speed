@@ -5,6 +5,8 @@ import {
 } from "@/db/schema";
 import { compareCriteres, computeScore, statutFromSeuil, STATUTS, type CritereScore, type EvalScore, type ScoreResult, type Statut } from "@/lib/audit/score";
 import { propositionsDonnees } from "@/lib/audit/donnees";
+import { propositionsBackoffice } from "@/lib/audit/backoffice";
+import { entreeBackoffice } from "./backoffice";
 import { commentaireRequis } from "@/lib/audit/regles";
 import type { ClientMetrics } from "@/lib/metrics/compute";
 import { getMetricsParams, loadDossiers } from "./recompute";
@@ -51,37 +53,71 @@ export async function createAudit(db: DB, clientId: string, userId: number): Pro
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) throw new AuditError("Client introuvable", 404);
   const [brouillon] = await db.select().from(audits).where(and(eq(audits.clientId, clientId), eq(audits.statut, "brouillon"))).limit(1);
-  if (brouillon) return { id: brouillon.id, existant: true };
+  if (brouillon) {
+    // Données rafraîchies à chaque ouverture (nouvel export, trafic GA4) sans toucher aux réponses déjà données
+    await appliquerDonneesAudit(db, brouillon.id, clientId);
+    return { id: brouillon.id, existant: true };
+  }
 
   const [url] = await db.select().from(clientUrls).where(eq(clientUrls.clientId, clientId)).orderBy(desc(clientUrls.principale)).limit(1);
   const [audit] = await db.insert(audits).values({
     clientId, date: new Date().toISOString().slice(0, 10), statut: "brouillon", auteurId: userId, assigneA: userId, urlAuditee: url?.url ?? null,
   }).returning();
-
-  // Propositions « Données Speedmedia » calculées sur le dernier export importé
-  const props = await propositionsDonneesClient(db, clientId);
-  {
-    const cs = await loadCriteres(db);
-    if (props.length) {
-      await db.insert(evaluations).values(props.map((p) => ({
-        auditId: audit.id, critereId: p.critereId, critereVersion: cs.find((c) => c.id === p.critereId)!.version,
-        statut: null, valeur: p.valeur === null ? null : String(p.valeur), source: "donnees", confiance: p.confiance,
-        proposition: p, preuve: p.preuve,
-      })));
-    }
-  }
-  await refreshScore(db, audit.id);
+  await appliquerDonneesAudit(db, audit.id, clientId);
   return { id: audit.id, existant: false };
 }
 
-/** Critères « Données Speedmedia » recalculés sur le dernier export importé. */
-export async function propositionsDonneesClient(db: DB, clientId: string) {
+/**
+ * Propositions « Données Speedmedia » (export dossiers, trafic, exports back-office) dans un brouillon.
+ * Une réponse déjà donnée (statut) ou une proposition du scan n'est jamais écrasée, sauf par une donnée
+ * en confiance haute sur un critère encore sans réponse. Les critères en attente d'un export reçoivent la mention.
+ */
+export async function appliquerDonneesAudit(db: DB, auditId: number, clientId: string) {
+  const { propositions, attentes } = await donneesAuditClient(db, clientId);
+  const cs = await loadCriteres(db);
+  const version = new Map(cs.map((c) => [c.id, c.version]));
+  const existantes = new Map((await db.select().from(evaluations).where(eq(evaluations.auditId, auditId))).map((e) => [e.critereId, e]));
+  for (const p of propositions) {
+    if (!version.has(p.critereId)) continue;
+    const e = existantes.get(p.critereId);
+    const valeur = p.valeur === null ? null : String(p.valeur);
+    const vals = { proposition: p, preuve: p.preuve, confiance: p.confiance, valeur, source: "donnees" as const };
+    if (!e) await db.insert(evaluations).values({ auditId, critereId: p.critereId, critereVersion: version.get(p.critereId)!, statut: null, ...vals });
+    else if (e.statut === null && !e.aEnvoyerClient) {
+      const prop = e.proposition as { source?: string; statut?: string | null } | null;
+      const remplacer = !prop || prop.source === "donnees" || e.source === "donnees" || (p.statut !== null && p.confiance === "haute");
+      if (remplacer) await db.update(evaluations).set(vals).where(eq(evaluations.id, e.id));
+    }
+  }
+  for (const a of attentes) {
+    if (!version.has(a.critereId)) continue;
+    const e = existantes.get(a.critereId);
+    const preuve = { texte: a.texte, source: "Exports back-office SpeedResa" };
+    if (!e) await db.insert(evaluations).values({ auditId, critereId: a.critereId, critereVersion: version.get(a.critereId)!, statut: null, valeur: null, source: null, preuve });
+    else if (e.statut === null && !e.proposition) await db.update(evaluations).set({ preuve }).where(eq(evaluations.id, e.id));
+  }
+  await refreshScore(db, auditId);
+}
+
+/** Critères « Données Speedmedia » d'un client : export dossiers, trafic, exports back-office. */
+export async function donneesAuditClient(db: DB, clientId: string) {
   const [snap] = await db.select().from(clientSnapshots).where(eq(clientSnapshots.clientId, clientId));
-  if (!snap) return [];
+  const [ref] = snap ? [snap] : await db.select().from(clientSnapshots).limit(1);
   const cs = await loadCriteres(db);
   const map = new Map(cs.map((c) => [c.id, toCritereScore(c)]));
+  const params = await getMetricsParams(db);
   const rows = (await loadDossiers(db)).filter((d) => d.idAgence === clientId);
-  return propositionsDonnees(snap.data as ClientMetrics, rows, snap.reference, map, await getMetricsParams(db));
+  const m = (snap?.data as ClientMetrics | undefined) ?? null;
+  // Sans aucun export dossiers importé, rien n'est calculable sur les dossiers
+  const propositions = ref ? propositionsDonnees(m, rows, ref.reference, map, params) : [];
+  const bo = propositionsBackoffice({ ...(await entreeBackoffice(db, clientId, m, rows)), params }, map);
+  for (const p of bo.propositions) if (!propositions.some((x) => x.critereId === p.critereId)) propositions.push(p);
+  return { propositions, attentes: bo.attentes.filter((a) => !propositions.some((p) => p.critereId === a.critereId)) };
+}
+
+/** Propositions « Données Speedmedia » recalculées (vérification des actions du plan). */
+export async function propositionsDonneesClient(db: DB, clientId: string) {
+  return (await donneesAuditClient(db, clientId)).propositions;
 }
 
 // ───────────────────────── Lecture ─────────────────────────

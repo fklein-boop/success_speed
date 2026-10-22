@@ -374,13 +374,19 @@ function Carte({ c, e, prec, precDate, restants, conflit, nomDe, presentsIci, on
   onRepondre: (i: { statut: Statut | null; valeur: number | null; commentaire: string | null; aEnvoyerClient: boolean }) => Promise<boolean>;
   onPasser: (sens: 1 | -1) => void; onResoudre: (garder: "leur" | "mienne") => void;
 }) {
-  const [valeurTxt, setValeurTxt] = useState(valeurPourSaisie(e?.valeur ?? e?.proposition?.valeur?.toString() ?? null, c.unite));
+  // VIS-03 : l'API Google ne donne pas les réponses du propriétaire ; le CSM compte les réponses sur les 10 derniers avis
+  const vis03 = c.id === "VIS-03";
+  const [valeurTxt, setValeurTxt] = useState(() => {
+    const v = e?.valeur ?? e?.proposition?.valeur?.toString() ?? null;
+    return vis03 ? (v !== null && v !== "" ? String(Math.round(Number(v) * 10)) : "") : valeurPourSaisie(v, c.unite);
+  });
   const [commentaire, setCommentaire] = useState(e?.commentaire ?? "");
   const [requis, setRequis] = useState<string | null>(null);
   const [enCours, setEnCours] = useState(false);
   const comRef = useRef<HTMLTextAreaElement>(null);
   const valRef = useRef<HTMLInputElement>(null);
-  const valeur = c.type === "Seuil" ? parseValeurSaisie(valeurTxt, c.unite) : null;
+  const nbReponses = vis03 && /^\s*\d{1,2}\s*$/.test(valeurTxt) && Number(valeurTxt) <= 10 ? Number(valeurTxt) : null;
+  const valeur = vis03 ? (nbReponses === null ? null : nbReponses / 10) : c.type === "Seuil" ? parseValeurSaisie(valeurTxt, c.unite) : null;
   const calc = c.type === "Seuil" ? statutFromSeuil(valeur, c) : null;
 
   const repondre = useCallback(async (statut: Statut | null, opts: { envoyer?: boolean; commentaire?: string; valeur?: number | null } = {}) => {
@@ -456,11 +462,12 @@ function Carte({ c, e, prec, precDate, restants, conflit, nomDe, presentsIci, on
 
       {c.type === "Seuil" && (
         <div className="mt-4">
-          <label htmlFor={`val-${c.id}`} className="libelle">Valeur mesurée ({c.unite}) <kbd className="ml-1 font-mono">V</kbd></label>
+          <label htmlFor={`val-${c.id}`} className="libelle">{vis03 ? "Sur les 10 derniers avis, combien ont une réponse de l'agence ?" : `Valeur mesurée (${c.unite})`} <kbd className="ml-1 font-mono">V</kbd></label>
+          {vis03 && <p className="mt-1 text-xs text-gris-texte">Ouvrez les avis de la fiche (lien « Voir la page » de la preuve), triez par « Plus récents » et comptez les avis avec une réponse du propriétaire.</p>}
           <div className="mt-1 flex flex-wrap items-center gap-3">
             <input id={`val-${c.id}`} ref={valRef} inputMode="decimal" value={valeurTxt} onChange={(ev) => setValeurTxt(ev.target.value)}
               onKeyDown={(ev) => { if (ev.key === "Enter" && calc) { ev.preventDefault(); void repondre(calc); } }}
-              className="champ w-32" placeholder={c.unite?.startsWith("%") ? "ex. 35" : "ex. 4,4"} />
+              className="champ w-32" placeholder={vis03 ? "0 à 10" : c.unite?.startsWith("%") ? "ex. 35" : "ex. 4,4"} />
             <span className="text-sm" aria-live="polite">{calc ? <>→ statut calculé <StatutBadge statut={calc} small /> <span className="text-gris-texte">(Entrée pour retenir)</span></> : <span className="text-gris-texte">{texteSeuil(c)}</span>}</span>
           </div>
         </div>

@@ -21,6 +21,14 @@ export const CHAMPS = {
   total: { label: "Total du dossier", requis: true, alias: ["totaldudossier", "totaldossier", "total", "montant"] },
   encaisse: { label: "Total encaissé", requis: false, alias: ["totalencaisse", "encaisse"] },
   erreurResalive: { label: "Erreur RésaLive", requis: true, alias: ["erreurresalive", "erreur"] },
+  // Export enrichi (08_DEMANDES_EQUIPES_EXPORTS § 1) : colonnes facultatives, lues quand elles sont livrées
+  idProduit: { label: "ID produit", requis: false, alias: ["idproduit", "produitid"] },
+  canal: { label: "Origine", requis: false, alias: ["origine", "canal", "canaldevente"] },
+  montantOptions: { label: "Montant options", requis: false, alias: ["montantoptions"] },
+  montantAssurance: { label: "Montant assurance", requis: false, alias: ["montantassurance"] },
+  dateConfirmation: { label: "Date de confirmation", requis: false, alias: ["datedeconfirmation", "dateconfirmation"] },
+  emailRenseigne: { label: "Email renseigné", requis: false, alias: ["emailrenseigne"] },
+  payeEnLigne: { label: "Payé en ligne", requis: false, alias: ["payeenligne", "montantpayeenligne"] },
 } as const;
 
 export type Champ = keyof typeof CHAMPS;
@@ -41,6 +49,14 @@ export interface DossierImport {
   total: number;
   encaisse: number;
   erreurResalive: boolean;
+  /** Export enrichi : absents (undefined) tant que la colonne n'est pas livrée */
+  idProduit?: string | null;
+  canal?: string | null;
+  montantOptions?: number | null;
+  montantAssurance?: number | null;
+  dateConfirmation?: string | null;
+  emailRenseigne?: boolean | null;
+  payeEnLigne?: number | null;
 }
 
 /** Normalise un nom de colonne : minuscules, sans accents, sans espaces ni ponctuation. */
@@ -161,6 +177,8 @@ export function rowsToDossiers(rows: unknown[][], mapping: Mapping, today = new 
     if (Number.isNaN(total)) return void anomalies.lignesIgnorees.push({ ligne, raison: `Montant illisible (dossier ${idResa})` });
     const encaisse = parseAmount(get(r, "encaisse"));
     const pax = Number(get(r, "pax"));
+    const opt = (c: Champ) => mapping[c] !== undefined;
+    const montant = (c: Champ) => { if (!opt(c)) return undefined; const v = get(r, c); if (v === null || v === undefined || v === "") return null; const n = parseAmount(v); return Number.isNaN(n) ? null : n; };
 
     const d: DossierImport = {
       idResa: idResa.replace(/\.0$/, ""),
@@ -177,6 +195,13 @@ export function rowsToDossiers(rows: unknown[][], mapping: Mapping, today = new 
       total,
       encaisse: Number.isNaN(encaisse) ? 0 : encaisse,
       erreurResalive: oui(get(r, "erreurResalive")),
+      ...(opt("idProduit") ? { idProduit: str(get(r, "idProduit"))?.replace(/\.0$/, "") ?? null } : {}),
+      ...(opt("canal") ? { canal: str(get(r, "canal"))?.toLowerCase() ?? null } : {}),
+      ...(opt("montantOptions") ? { montantOptions: montant("montantOptions") } : {}),
+      ...(opt("montantAssurance") ? { montantAssurance: montant("montantAssurance") } : {}),
+      ...(opt("dateConfirmation") ? { dateConfirmation: parseDate(get(r, "dateConfirmation")) } : {}),
+      ...(opt("emailRenseigne") ? { emailRenseigne: str(get(r, "emailRenseigne")) === null ? null : oui(get(r, "emailRenseigne")) } : {}),
+      ...(opt("payeEnLigne") ? { payeEnLigne: montant("payeEnLigne") } : {}),
     };
     if (out.has(d.idResa)) anomalies.doublons.push(d.idResa);
     if (d.date > today) anomalies.datesFutures.push(d.idResa);
@@ -193,8 +218,11 @@ export function rowsToDossiers(rows: unknown[][], mapping: Mapping, today = new 
   return { dossiers: list, anomalies, periode: { debut, fin } };
 }
 
+const ENRICHIS = ["idProduit", "canal", "montantOptions", "montantAssurance", "dateConfirmation", "emailRenseigne", "payeEnLigne"] as const;
+
 /** Champs comparés pour savoir si un dossier connu a changé. */
 export function dossierChanged(a: DossierImport, b: DossierImport): boolean {
   return a.statut !== b.statut || Math.abs(a.total - b.total) > 0.005 || Math.abs(a.encaisse - b.encaisse) > 0.005
-    || a.erreurResalive !== b.erreurResalive || a.date !== b.date || a.idAgence !== b.idAgence;
+    || a.erreurResalive !== b.erreurResalive || a.date !== b.date || a.idAgence !== b.idAgence
+    || ENRICHIS.some((k) => b[k] !== undefined && (a[k] ?? null) !== (b[k] ?? null));
 }
