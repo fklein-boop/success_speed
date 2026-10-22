@@ -69,6 +69,8 @@ export const clients = pgTable("clients", {
   csmId: integer("csm_id").references(() => users.id),
   emailContact: text("email_contact"),
   echeanceContrat: date("echeance_contrat"),
+  /** Interlocuteur digital côté client (nom, rôle) : simple information, hors score depuis le lot D (ancien REL-03) */
+  interlocuteurDigital: text("interlocuteur_digital"),
   /** Estimation du volume d'affaires total de l'entreprise (onglet « VA annualisé ») */
   vaGlobalEstime: doublePrecision("va_global_estime"),
   /** false pour les comptes secondaires d'un groupe : l'estimation n'est comptée qu'une fois */

@@ -71,6 +71,13 @@
       "when": 1792675582832,
       "tag": "0009_feuille_route",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792677569119,
+      "tag": "0010_interlocuteur_digital",
+      "breakpoints": true
     }
   ]
 }

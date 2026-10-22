@@ -218,7 +218,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
         <section className="carte p-4" aria-labelledby="infos-titre">
           <h2 id="infos-titre" className="text-lg">Informations du compte</h2>
           <InfosClientForm editable={editable} groupes={tousGroupes.map((g) => g.nom).sort()} modeles={modeles}
-            client={{ id: c.id, nom: c.nom, groupe: grp[0]?.nom ?? null, modele: c.modele, vaCompteeDansTotaux: c.vaCompteeDansTotaux, csmId: c.csmId, emailContact: c.emailContact, echeanceContrat: c.echeanceContrat, vaGlobalEstime: c.vaGlobalEstime, googlePlaceId: c.googlePlaceId }}
+            client={{ id: c.id, nom: c.nom, groupe: grp[0]?.nom ?? null, modele: c.modele, vaCompteeDansTotaux: c.vaCompteeDansTotaux, csmId: c.csmId, emailContact: c.emailContact, echeanceContrat: c.echeanceContrat, vaGlobalEstime: c.vaGlobalEstime, googlePlaceId: c.googlePlaceId, interlocuteurDigital: c.interlocuteurDigital }}
             csms={csms.map((u) => ({ id: u.id, nom: u.nom || u.email }))} />
         </section>
         <section className="carte p-4" aria-labelledby="urls-titre">

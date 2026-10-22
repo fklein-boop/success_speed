@@ -1,0 +1,1 @@
+ALTER TABLE "clients" ADD COLUMN "interlocuteur_digital" text;

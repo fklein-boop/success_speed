@@ -21,6 +21,7 @@ const Infos = z.object({
   groupe: z.string().trim().max(120).default(""),
   modele: z.string().trim().max(120).default(""),
   vaCompteeDansTotaux: z.string().optional(),
+  interlocuteurDigital: z.string().trim().max(200).default(""),
 });
 
 export async function majClient(_: unknown, form: FormData) {
@@ -42,6 +43,7 @@ export async function majClient(_: unknown, form: FormData) {
     groupeId: await groupeParNom(db, d.groupe),
     modele: d.modele || null,
     vaCompteeDansTotaux: d.vaCompteeDansTotaux === "on",
+    interlocuteurDigital: d.interlocuteurDigital || null,
   }).where(eq(clients.id, d.id));
   await logActivity(u.id, "client_modifie", "client", d.id, { csmId: d.csmId, echeance: d.echeanceContrat });
   if (avant && (avant.vaGlobalEstime !== va || avant.vaCompteeDansTotaux !== (d.vaCompteeDansTotaux === "on"))) await recomputeAll(db);

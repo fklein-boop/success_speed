@@ -6,6 +6,8 @@ import { migrate as migrateNeon } from "drizzle-orm/neon-serverless/migrator";
 import { getDb } from "../src/db";
 import { seedReferentiel } from "../src/lib/seed";
 import { importAuditsV1 } from "../src/lib/server/audits";
+import { nettoyageLotD } from "../src/lib/server/referentiel";
+import { recomputeAll } from "../src/lib/server/recompute";
 
 async function main() {
   const db = await getDb();
@@ -18,6 +20,9 @@ async function main() {
   console.log("Migrations appliquées.");
   const r = await seedReferentiel(db);
   const auditsImportes = await importAuditsV1(db);
+  // Lot D : une seule fois (paramètre « migration_lot_d »)
+  const lotD = await nettoyageLotD(db);
+  if (lotD) { await recomputeAll(db); console.log("Lot D appliqué :", lotD); }
   console.log({ ...r, auditsImportes });
   process.exit(0);
 }

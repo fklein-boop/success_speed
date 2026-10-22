@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { majClient } from "@/app/(app)/clients/[id]/actions";
 
 export function InfosClientForm({ client, csms, editable, groupes, modeles }: {
-  client: { id: string; nom: string; csmId: number | null; emailContact: string | null; echeanceContrat: string | null; vaGlobalEstime: number | null; googlePlaceId: string | null; groupe: string | null; modele: string | null; vaCompteeDansTotaux: boolean };
+  client: { id: string; nom: string; csmId: number | null; emailContact: string | null; echeanceContrat: string | null; vaGlobalEstime: number | null; googlePlaceId: string | null; groupe: string | null; modele: string | null; vaCompteeDansTotaux: boolean; interlocuteurDigital: string | null };
   csms: { id: number; nom: string }[];
   editable: boolean;
   groupes: string[];
@@ -34,6 +34,9 @@ export function InfosClientForm({ client, csms, editable, groupes, modeles }: {
         </label>
         <label className="flex flex-col gap-1"><span className="libelle">Email de contact client</span>
           <input name="emailContact" type="email" defaultValue={client.emailContact ?? ""} className="champ" />
+        </label>
+        <label className="flex flex-col gap-1"><span className="libelle">Interlocuteur digital (nom, rôle)</span>
+          <input name="interlocuteurDigital" defaultValue={client.interlocuteurDigital ?? ""} placeholder="ex. Julie Martin, responsable web" className="champ" />
         </label>
         <label className="flex flex-col gap-1"><span className="libelle">Échéance du contrat</span>
           <input name="echeanceContrat" type="date" defaultValue={client.echeanceContrat ?? ""} className="champ" />
