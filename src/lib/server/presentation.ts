@@ -43,7 +43,7 @@ export async function presentationClient(db: DB, clientId: string, auditId?: num
   return {
     client: st.client.nom, date: st.audit.date, preAudit: st.audit.statut !== "finalise",
     score: score.score, scoreVise: score.scoreApres, niveau: niveau ? MATURITE_LIBELLE[niveau] : null,
-    piliers, priorites: modele?.priorites ?? [], synthese: modele?.synthese ?? null,
+    piliers, priorites: modele?.priorites ?? [], synthese: modele?.synthese ?? null, feuille: modele?.feuille ?? null,
   };
 }
 export type Presentation = Awaited<ReturnType<typeof presentationClient>>;

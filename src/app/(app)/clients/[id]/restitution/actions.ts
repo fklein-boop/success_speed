@@ -6,6 +6,8 @@ import { getDb } from "@/db";
 import { assertUser } from "@/lib/server/auth";
 import { AuditError } from "@/lib/server/audits";
 import { parisVersUtc } from "@/lib/format";
+import { enregistrerFeuille, majSuiviChantier, proposerFeuille, validerFeuille } from "@/lib/server/feuille";
+import { SchemaFeuille, SUIVIS } from "@/lib/restitution/feuille";
 import { ajouterRdv, enregistrerTextes, envoyerRestitution, genererPlan, genererTextes, majAction, STATUTS_ACTION } from "@/lib/server/restitution";
 
 type Etat = { ok?: boolean; message?: string; erreur?: string } | null;
@@ -79,4 +81,44 @@ export async function ajouterRdvAction(_: Etat, form: FormData): Promise<Etat> {
   await ajouterRdv(await getDb(), p.data.clientId, u.id, { date: parisVersUtc(p.data.date), objet: p.data.objet, notes: p.data.notes || null });
   rafraichir(p.data.clientId);
   return { ok: true, message: "Rendez-vous enregistré." };
+}
+
+// ───────── Feuille de route (lot C) ─────────
+
+export async function proposerFeuilleAction(clientId: string): Promise<Etat> {
+  const u = await assertUser(["superadmin", "csm"]);
+  try {
+    const r = await proposerFeuille(await getDb(), clientId, u.id);
+    rafraichir(clientId);
+    return { ok: true, message: `${r.chantiers} chantier(s) proposé(s) ${r.source === "claude" ? "par Claude" : "par regroupement automatique (sans clé Anthropic)"} : ajustez-les, puis validez.` };
+  } catch (e) { return erreur(e); }
+}
+
+export async function enregistrerFeuilleAction(clientId: string, feuille: unknown): Promise<Etat> {
+  const u = await assertUser(["superadmin", "csm"]);
+  try {
+    await enregistrerFeuille(await getDb(), clientId, u.id, SchemaFeuille.parse(feuille));
+    rafraichir(clientId);
+    return { ok: true, message: "Feuille de route enregistrée." };
+  } catch (e) { return erreur(e); }
+}
+
+export async function validerFeuilleAction(clientId: string, feuille: unknown): Promise<Etat> {
+  const u = await assertUser(["superadmin", "csm"]);
+  try {
+    const db = await getDb();
+    await enregistrerFeuille(db, clientId, u.id, SchemaFeuille.parse(feuille));
+    const r = await validerFeuille(db, clientId, u.id);
+    rafraichir(clientId);
+    return { ok: true, message: `Feuille de route validée : ${r.chantiers} chantier(s)${r.actionsCreees ? `, ${r.actionsCreees} action(s) ajoutée(s) au plan` : ""}. Le PDF, l'email et la présentation la reprennent.` };
+  } catch (e) { return erreur(e); }
+}
+
+export async function suiviChantierAction(clientId: string, chantierId: string, suivi: string): Promise<Etat> {
+  const u = await assertUser(["superadmin", "csm"]);
+  try {
+    await majSuiviChantier(await getDb(), clientId, u.id, chantierId, z.enum(SUIVIS).parse(suivi));
+    rafraichir(clientId);
+    return { ok: true };
+  } catch (e) { return erreur(e); }
 }

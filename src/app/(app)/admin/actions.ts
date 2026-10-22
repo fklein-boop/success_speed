@@ -11,6 +11,7 @@ import { recomputeAll } from "@/lib/server/recompute";
 import { planifierRescanMensuel, traiterFileScans } from "@/lib/server/scans";
 import { effacerGa4, enregistrerConfigGa4 } from "@/lib/server/ga4";
 import { CLE_SOURCE_ABANDON } from "@/lib/server/backoffice";
+import { enregistrerEquipes } from "@/lib/server/feuille";
 import { DEFAULT_METRICS_PARAMS } from "@/lib/metrics/params";
 import { GROUPES_PARAMS, depuisSaisie } from "@/lib/metrics/libelles";
 import offresConfig from "../../../../config/offres.json";
@@ -216,4 +217,13 @@ export async function sourceAbandonAction(_: Etat, form: FormData): Promise<Etat
   await ecrireParametre(await getDb(), CLE_SOURCE_ABANDON, v, u.id);
   revalidatePath("/admin/services");
   return { ok: true, message: `Abandon panier calculé avec ${v === "ga4" ? "Google Analytics 4" : "l'export dossiers enrichi"} (à la prochaine ouverture des audits).` };
+}
+
+export async function majEquipesAction(_: Etat, form: FormData): Promise<Etat> {
+  const u = await admin();
+  try {
+    await enregistrerEquipes(await getDb(), u.id, String(form.get("equipes") ?? "").split("\n"));
+    revalidatePath("/admin/offres");
+    return { ok: true, message: "Équipes enregistrées." };
+  } catch (e) { return erreur(e); }
 }

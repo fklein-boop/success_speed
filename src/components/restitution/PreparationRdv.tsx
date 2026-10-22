@@ -83,7 +83,7 @@ export function PreparationRdv({ clientId, auditId, textes, emailContact, editab
               <label className="flex flex-col gap-1"><span className="libelle">Destinataire(s)</span>
                 <input name="destinataires" defaultValue={emailContact ?? ""} placeholder="contact@agence.fr (plusieurs : séparez par des virgules)" className="champ" required />
               </label>
-              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="joindreCsv" defaultChecked /> Joindre aussi l&apos;export CSV (version client)</label>
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="joindreCsv" defaultChecked /> Joindre l&apos;annexe détaillée critère par critère (CSV)</label>
               <div className="flex flex-wrap items-center gap-3">
                 <button className="btn-primaire" disabled={pendingEnvoi}>{pendingEnvoi ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <Send size={14} aria-hidden />} Envoyer l&apos;email avec le PDF</button>
                 <Retour e={etatEnvoi} />

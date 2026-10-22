@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, CheckCircle2, Maximize2, Scale, Wrench, X } from "lucide-react";
 import type { Presentation } from "@/lib/server/presentation";
 import { fmtDate } from "@/lib/format";
+import { moisFrise } from "@/lib/restitution/feuille";
 
 /**
  * Présentation au client pendant le rendez-vous (lot B5) : plein écran, couleurs SpeedResa, gros caractères.
@@ -88,7 +89,22 @@ export function PresentationClient({ p, retour }: { p: Presentation; retour: str
           </div>
         )}
 
-        {i === total - 1 && (
+        {i === total - 1 && p.feuille && (
+          <div className="w-full max-w-6xl">
+            <h1 className="font-titres text-5xl font-bold">Notre feuille de route</h1>
+            <div className="mt-8 grid grid-cols-[minmax(0,2fr)_repeat(6,minmax(0,1fr))] items-center gap-y-3 text-lg">
+              <span />
+              {moisFrise(p.feuille.valideeLe ? new Date(p.feuille.valideeLe) : new Date()).map((m) => <span key={m} className="text-center text-base text-white/60">{m}</span>)}
+              {p.feuille.chantiers.map((c, k) => (
+                <Fragment key={c.titre}>
+                  <span className="pr-4"><span className="font-titres font-bold text-lagon">{k + 1}</span> {c.titre}<span className="block text-sm text-white/60">{c.porteur} · {c.echeance}{c.offre ? ` · ${c.offre}` : ""}</span></span>
+                  <span className="col-span-6 grid grid-cols-6"><span className={`h-5 rounded-full ${c.priorite === "haute" ? "bg-emeraude" : c.priorite === "moyenne" ? "bg-horizon" : "bg-lagon/70"}`} style={{ gridColumn: `${c.debut + 1} / span ${c.duree}` }} /></span>
+                </Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+        {i === total - 1 && !p.feuille && (
           <div className="w-full max-w-5xl">
             <h1 className="font-titres text-5xl font-bold">Nos priorités ensemble</h1>
             {p.priorites.length ? (

@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import type { DB } from "@/db";
-import { actions, audits, clients, clientSnapshots, clientUrls, envoisClient, evaluations, parametres, rdv, restitutions, users } from "@/db/schema";
+import { actions, audits, clients, clientSnapshots, clientUrls, envoisClient, evaluations, feuillesRoute, parametres, rdv, restitutions, users } from "@/db/schema";
+import { feuilleClient } from "@/lib/restitution/feuille";
 import offresConfig from "../../../config/offres.json";
 import { compareAudits, computeScore, type ScoreResult, type Statut } from "@/lib/audit/score";
 import type { ClientMetrics } from "@/lib/metrics/compute";
@@ -108,10 +109,13 @@ export async function chargerRestitution(db: DB, clientId: string) {
   }
 
   const [textes] = await db.select().from(restitutions).where(eq(restitutions.auditId, audit.id));
+  // Dernière feuille de route validée du client (lot C) : elle prime dans le PDF, l'email et la présentation
+  const [feuille] = await db.select().from(feuillesRoute).where(and(eq(feuillesRoute.clientId, clientId), eq(feuillesRoute.statut, "validee"))).orderBy(desc(feuillesRoute.valideeLe)).limit(1);
   const [url] = await db.select().from(clientUrls).where(eq(clientUrls.clientId, clientId)).orderBy(desc(clientUrls.principale)).limit(1);
   return {
     ...base, audit, finalise, score, scoreVise: vise.scoreApres, enRetard, causes, planPropose, actionsAudit, legaux, forces, evolution,
     benchmark: await moyennesPiliers(db, clientId), textes: textes ?? null, url: audit.urlAuditee ?? url?.url ?? null,
+    feuille: feuilleClient(feuille ?? null, libelle),
   };
 }
 
@@ -145,7 +149,8 @@ export function modeleClient(r: RestitutionAvecAudit) {
     evolution: r.evolution ? { depuis: r.evolution.depuis, delta: r.evolution.delta, gagnes: r.evolution.gagnes, perdus: r.evolution.perdus } : null,
     priorites: actionsSource.filter((a) => !a.obligationLegale).slice(0, 8).map((a) => ({ critere: a.libelle, pilier: a.pilier, offre: a.offre, priorite: a.priorite >= 15 ? "haute" : a.priorite >= 6 ? "moyenne" : "basse", quadrant: quadrant(a) })),
     legaux: r.legaux.map((l) => ({ critere: l.critere, texte: l.texte })),
-    synthese: r.textes?.synthese ?? syntheseModele(contexteTextes(r)),
+    synthese: r.feuille?.synthese || r.textes?.synthese || syntheseModele(contexteTextes(r)),
+    feuille: r.feuille,
   };
 }
 export type ModeleClient = ReturnType<typeof modeleClient>;

@@ -1,5 +1,6 @@
 import path from "node:path";
 import { Document, Font, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { moisFrise } from "@/lib/restitution/feuille";
 import { MATURITE_DESCRIPTION, MATURITE_LIBELLE } from "@/lib/audit/score";
 import { MENTION_JURIDIQUE } from "@/lib/restitution/textes";
 import type { ModeleClient } from "@/lib/server/restitution";
@@ -83,6 +84,50 @@ function Barre({ libelle, score, moyenne }: { libelle: string; score: number; mo
 
 const PRIO: Record<string, string> = { haute: C.rouge, moyenne: C.ambre, basse: C.gris };
 
+const PORTEUR_COUL = C.horizon;
+
+/** Feuille de route validée (lot C) : chantiers dans l'ordre, puis frise sur 6 mois. */
+function FeuilleDeRoute({ f }: { f: NonNullable<ModeleClient["feuille"]> }) {
+  const mois = moisFrise(f.valideeLe ? new Date(f.valideeLe) : new Date());
+  return (
+    <View>
+      <Text style={[s.h2, { marginTop: 0 }]}>Votre feuille de route</Text>
+      {f.chantiers.map((c, i) => (
+        <View key={i} style={[s.carte, { marginBottom: 8, padding: 10 }]} wrap={false}>
+          <View style={[s.ligne, { justifyContent: "space-between" }]}>
+            <Text style={{ fontFamily: "Outfit", fontSize: 11.5, width: "75%" }}>{i + 1}. {c.titre}</Text>
+            <Text style={{ color: PRIO[c.priorite], fontWeight: 700 }}>priorité {c.priorite}</Text>
+          </View>
+          {c.objectif ? <Text style={{ marginTop: 2 }}>{c.objectif}</Text> : null}
+          {c.benefice ? <Text style={{ color: C.horizon, marginTop: 2 }}>Bénéfice : {c.benefice}</Text> : null}
+          <View style={[s.ligne, { marginTop: 4, gap: 12 }]}>
+            <Text style={s.petit}>Échéance : <Text style={{ color: C.minuit, fontWeight: 600 }}>{c.echeance}</Text></Text>
+            <Text style={s.petit}>Porteur : <Text style={{ color: PORTEUR_COUL, fontWeight: 600 }}>{c.porteur}</Text></Text>
+            {c.offre ? <Text style={s.petit}>Solution : <Text style={{ color: C.minuit, fontWeight: 600 }}>{c.offre}</Text></Text> : null}
+          </View>
+          <Text style={[s.petit, { marginTop: 3 }]}>Points concernés : {c.criteres.join(" · ")}</Text>
+        </View>
+      ))}
+      <View wrap={false}>
+        <Text style={s.h2}>Calendrier</Text>
+        <View style={[s.ligne, { borderBottomWidth: 1, borderColor: C.minuit, paddingBottom: 2 }]}>
+          <Text style={{ width: "34%" }} />
+          {mois.map((x) => <Text key={x} style={{ width: `${66 / mois.length}%`, fontWeight: 700, textAlign: "center" }}>{x}</Text>)}
+        </View>
+        {f.chantiers.map((c, i) => (
+          <View key={i} style={[s.ligne, { borderBottomWidth: 0.5, borderColor: C.grisClair, paddingVertical: 4, alignItems: "center" }]}>
+            <Text style={{ width: "34%", paddingRight: 6 }}>{i + 1}. {c.titre}</Text>
+            <View style={{ width: "66%", height: 9, position: "relative" }}>
+              <View style={{ position: "absolute", left: `${(c.debut / mois.length) * 100}%`, width: `${(c.duree / mois.length) * 100}%`, height: 9, backgroundColor: PRIO[c.priorite] === C.gris ? C.lagon : PRIO[c.priorite], borderRadius: 4 }} />
+            </View>
+          </View>
+        ))}
+        <Text style={[s.petit, { marginTop: 6 }]}>Le détail critère par critère figure en annexe (fichier CSV joint).</Text>
+      </View>
+    </View>
+  );
+}
+
 export function DocumentRestitution({ m }: { m: ModeleClient }) {
   enregistrerPolices();
   const vise = m.scoreVise !== null && m.score !== null && m.scoreVise > m.score;
@@ -141,6 +186,7 @@ export function DocumentRestitution({ m }: { m: ModeleClient }) {
             </View>
           )}
 
+          {m.feuille ? <FeuilleDeRoute f={m.feuille} /> : (<>
           <Text style={s.h2}>Plan d&apos;action recommandé</Text>
           {m.priorites.length ? (
             <View>
@@ -161,6 +207,7 @@ export function DocumentRestitution({ m }: { m: ModeleClient }) {
               ))}
             </View>
           ) : <Text>Aucune action prioritaire : votre site est au niveau des meilleures pratiques sur les points évalués.</Text>}
+          </>)}
         </View>
         <Pied m={m} />
       </Page>

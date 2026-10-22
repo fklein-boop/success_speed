@@ -3,15 +3,24 @@ import { effortsOffres } from "@/lib/server/restitution";
 import { tousCriteres } from "@/lib/server/parametres";
 import offresConfig from "../../../../../config/offres.json";
 import { FormAdmin } from "@/components/admin/FormAdmin";
-import { majEffortsAction } from "../actions";
+import { majEffortsAction, majEquipesAction } from "../actions";
+import { equipesSpeedmedia } from "@/lib/server/feuille";
 
 /** Effort de chaque offre Speedmedia : sert à prioriser les plans d'action (impact ÷ effort). */
 export default async function OffresPage() {
   const db = await getDb();
-  const [efforts, cs] = await Promise.all([effortsOffres(db), tousCriteres(db)]);
+  const [efforts, cs, equipes] = await Promise.all([effortsOffres(db), tousCriteres(db), equipesSpeedmedia(db)]);
   const defaut = offresConfig.efforts as Record<string, string>;
   const offres = [...new Set([...Object.keys(defaut), ...cs.map((c) => c.offreSiNon).filter((x): x is string => !!x)])].sort((a, b) => a.localeCompare(b, "fr"));
   return (
+    <div className="space-y-6">
+    <section className="carte p-4" aria-labelledby="equipes-titre">
+      <h2 id="equipes-titre" className="text-lg">Équipes Speedmedia (porteurs des chantiers)</h2>
+      <p className="text-sm text-gris-texte">Proposées comme porteur dans la feuille de route, à côté du CSM, d&apos;un prestataire tiers et du client. Une équipe par ligne.</p>
+      <FormAdmin action={majEquipesAction} bouton="Enregistrer les équipes">
+        <textarea name="equipes" rows={4} defaultValue={equipes.join("\n")} aria-label="Équipes Speedmedia, une par ligne" className="champ mt-2 max-w-md" />
+      </FormAdmin>
+    </section>
     <FormAdmin action={majEffortsAction} bouton="Enregistrer les efforts">
       <p className="mb-3 text-sm text-gris-texte">Effort faible = 1, moyen = 2, fort = 3. La priorité d&apos;une action = impact ÷ effort. Les nouveaux plans d&apos;action utilisent ces valeurs.</p>
       <section className="carte overflow-x-auto">
@@ -35,5 +44,6 @@ export default async function OffresPage() {
         </table>
       </section>
     </FormAdmin>
+    </div>
   );
 }

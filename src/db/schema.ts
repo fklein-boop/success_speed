@@ -503,3 +503,24 @@ export const envoisClient = pgTable("envois_client", {
   auteurId: integer("auteur_id").references(() => users.id),
   createdAt: createdAt(),
 }, (t) => [index("envois_client_idx").on(t.clientId)]);
+
+/**
+ * Feuille de route client (lot C) : synthèse et chantiers (regroupements de critères), proposés par Claude
+ * (à défaut par règles), ajustés par le CSM, puis validés. Une feuille par audit ; la dernière validée sert au PDF.
+ */
+export const feuillesRoute = pgTable("feuilles_route", {
+  id: serial("id").primaryKey(),
+  clientId: text("client_id").notNull().references(() => clients.id),
+  auditId: integer("audit_id").notNull().references(() => audits.id),
+  /** brouillon | validee */
+  statut: text("statut").notNull().default("brouillon"),
+  synthese: text("synthese"),
+  /** Chantier[] (voir src/lib/restitution/feuille.ts) */
+  chantiers: jsonb("chantiers").notNull(),
+  /** claude | regles | manuel */
+  source: text("source"),
+  creePar: integer("cree_par").references(() => users.id),
+  valideePar: integer("validee_par").references(() => users.id),
+  valideeLe: timestamp("validee_le", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [uniqueIndex("feuilles_route_audit_idx").on(t.auditId), index("feuilles_route_client_idx").on(t.clientId)]);

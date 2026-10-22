@@ -186,6 +186,7 @@ export function AuditWorkspace({ initial, extra, me, editable: peutEditer }: { i
     if (!r.ok) return setMessage({ t: "err", m: r.data.erreur ?? "Erreur" });
     setStatutAudit("finalise");
     setMode("vue");
+    setMessage({ t: "ok", m: "Audit finalisé. Prochaine étape : la feuille de route du client (Livrables → Version client)." });
     router.refresh();
   }
 
@@ -241,9 +242,10 @@ export function AuditWorkspace({ initial, extra, me, editable: peutEditer }: { i
               </span>
             )}
             <details className="relative">
-              <summary className="btn-discret cursor-pointer list-none"><Download size={14} aria-hidden /> CSV</summary>
+              <summary className="btn-discret cursor-pointer list-none"><Download size={14} aria-hidden /> Livrables</summary>
               <div className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-gris-clair bg-white p-2 text-sm shadow-lg">
-                <a className="block rounded px-3 py-2 hover:bg-gris-clair" href={`/api/audits/${audit.id}/export?version=client`}>Version client <span className="text-xs text-gris-texte">(prête à envoyer)</span></a>
+                <a className="block rounded px-3 py-2 font-semibold hover:bg-gris-clair" href={`/clients/${client.id}/restitution#feuille`}>Version client : feuille de route →</a>
+                <a className="block rounded px-3 py-2 hover:bg-gris-clair" href={`/api/audits/${audit.id}/export?version=client`}>Annexe détaillée (CSV client)</a>
                 <a className="block rounded px-3 py-2 hover:bg-gris-clair" href={`/api/audits/${audit.id}/export?version=interne`}>Version interne <span className="text-xs text-gris-texte">(preuves, auteurs)</span></a>
               </div>
             </details>

@@ -10,6 +10,10 @@ import { fmtDate, fmtDateHeure } from "@/lib/format";
 import { PreparationRdv } from "@/components/restitution/PreparationRdv";
 import { AlertesLegales } from "@/components/restitution/AlertesLegales";
 import { questionnairesDuClient } from "@/lib/server/questionnaires";
+import { avancementChantiers, equipesSpeedmedia, feuillesClient } from "@/lib/server/feuille";
+import { FeuilleRoute } from "@/components/restitution/FeuilleRoute";
+import { iaDisponible } from "@/scan/ia";
+import { loadCriteres } from "@/lib/server/audits";
 
 export default async function RestitutionPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -26,6 +30,9 @@ export default async function RestitutionPage({ params }: { params: Promise<{ id
   const m = modeleClient(ra);
   const mail = emailModele(contexteTextes(ra));
   const version = ra.textes?.updatedAt ? String(ra.textes.updatedAt.getTime()) : "0";
+  const [{ courante, validee }, equipes, cs] = await Promise.all([feuillesClient(db, id, ra.audit.id), equipesSpeedmedia(db), loadCriteres(db)]);
+  const feuille = courante ?? validee;
+  const libelles = Object.fromEntries(cs.map((c) => [c.id, c.critere]));
 
   return (
     <div className="space-y-6">
@@ -39,6 +46,10 @@ export default async function RestitutionPage({ params }: { params: Promise<{ id
           </p>
         </div>
       </header>
+
+      <FeuilleRoute key={feuille ? `${feuille.id}-${feuille.updatedAt.getTime()}` : "vide"} clientId={id} editable={editable} iaDisponible={iaDisponible()} equipes={equipes} libelles={libelles}
+        feuille={feuille ? { statut: feuille.statut, synthese: feuille.synthese ?? "", chantiers: feuille.chantiers, source: feuille.source, valideeLe: feuille.valideeLe?.toISOString() ?? null } : null}
+        avancement={feuille ? avancementChantiers(feuille.chantiers, r.actions) : {}} />
 
       <PreparationRdv key={version} clientId={id} auditId={ra.audit.id} editable={editable} emailContact={r.client.emailContact} version={version}
         textes={{ synthese: ra.textes?.synthese ?? m.synthese, emailObjet: ra.textes?.emailObjet ?? mail.objet, emailCorps: ra.textes?.emailCorps ?? mail.corps, source: ra.textes?.source ?? null, modifieLe: ra.textes?.updatedAt ? fmtDateHeure(ra.textes.updatedAt) : null }} />

@@ -92,7 +92,7 @@ describe("B2 / B5 de bout en bout (base)", () => {
     const p = await presentationClient(db, "P17", auditId);
     const json = JSON.stringify(p);
     expect(json).not.toMatch(/Commentaire interne|csm-lot-b/);
-    expect(Object.keys(p).sort()).toEqual(["client", "date", "niveau", "piliers", "preAudit", "priorites", "score", "scoreVise", "synthese"]);
+    expect(Object.keys(p).sort()).toEqual(["client", "date", "feuille", "niveau", "piliers", "preAudit", "priorites", "score", "scoreVise", "synthese"]);
     expect(Object.keys(p.piliers[0]).sort()).toEqual(["enCours", "enPlace", "manque", "moyenne", "pilier", "score"]);
     const legal = p.piliers.find((x) => x.manque.some((m) => m.legal));
     expect(legal?.manque[0]).toMatchObject({ legal: true, solution: expect.any(String) });
