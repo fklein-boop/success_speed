@@ -114,7 +114,7 @@ export function PortfolioView({ rows, userId, csms, editable }: { rows: Portfoli
         {vue === "dynamique" && <p className="mt-1 text-xs text-gris-texte">Taille = volume 12 mois. Clients Fantômes exclus. Un client sans base N-1 est placé à 0 %. Cliquez sur un point pour ouvrir la fiche.</p>}
       </section>
 
-      <section className="carte" aria-labelledby="liste-titre">
+      <section id="mes-clients" className="carte scroll-mt-4" aria-labelledby="liste-titre">
         <div className="flex flex-wrap items-end gap-3 border-b border-gris-clair p-4">
           <h2 id="liste-titre" className="mr-auto text-lg">Clients <span className="text-sm font-normal text-gris-texte">({filtered.length})</span></h2>
           <label className="relative">

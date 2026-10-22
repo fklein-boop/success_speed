@@ -95,13 +95,29 @@ async function envoyerEmailQuestionnaire(db: DB, q: typeof questionnaires.$infer
  * Crée le questionnaire d'un audit (un seul actif par audit : le précédent est annulé,
  * son lien cesse de fonctionner) et l'envoie par email si une adresse est fournie.
  */
-export async function creerQuestionnaire(db: DB, auditId: number, userId: number, opts: { email?: string | null; envoyer: boolean }) {
+export async function creerQuestionnaire(db: DB, auditId: number, userId: number, opts: { email?: string | null; envoyer: boolean; criteres?: string[] }) {
   const [audit] = await db.select().from(audits).where(eq(audits.id, auditId));
   if (!audit) throw new AuditError("Audit introuvable", 404);
   const email = opts.email?.trim().toLowerCase() || null;
   if (email && !z.email().safeParse(email).success) throw new AuditError("Adresse email invalide.", 400);
   if (opts.envoyer && !email) throw new AuditError("Indiquez l'adresse email du client.", 400);
-  const questions = await questionsAudit(db, auditId);
+  // Répartition choisie par le CSM (lot B2) : ces critères partent au client, les autres restent au CSM
+  if (opts.criteres) {
+    if (!opts.criteres.length) throw new AuditError("Sélectionnez au moins une question pour le client.", 400);
+    if (audit.statut !== "brouillon") throw new AuditError("Audit finalisé : rouvrez-le pour poser des questions au client.", 409);
+    const cs = await loadCriteres(db);
+    const evs = new Map((await db.select().from(evaluations).where(eq(evaluations.auditId, auditId))).map((e) => [e.critereId, e]));
+    for (const id of opts.criteres) {
+      const c = cs.find((x) => x.id === id && x.actif);
+      if (!c) throw new AuditError(`Critère inconnu : ${id}`, 400);
+      const e = evs.get(id);
+      if (e?.statut) continue;
+      if (e) await db.update(evaluations).set({ aEnvoyerClient: true, updatedAt: new Date() }).where(eq(evaluations.id, e.id));
+      else await db.insert(evaluations).values({ auditId, critereId: id, critereVersion: c.version, statut: null, aEnvoyerClient: true, auteurId: userId });
+    }
+  }
+  let questions = await questionsAudit(db, auditId);
+  if (opts.criteres) questions = questions.filter((q) => opts.criteres!.includes(q.critereId));
   if (!questions.length) throw new AuditError("Aucune question à poser : tous les critères « client » ont déjà une réponse.", 400);
   await db.update(questionnaires).set({ statut: "annule" }).where(and(eq(questionnaires.auditId, auditId), eq(questionnaires.statut, "en_attente")));
   const nonce = randomBytes(16).toString("base64url");
@@ -232,13 +248,14 @@ export async function reporterReponses(db: DB, q: typeof questionnaires.$inferSe
     const { statut, valeur } = statutDepuisReponse(c, question, r.reponse);
     const texte = `Réponse client (${date}) : ${texteReponse(question, r.reponse)}${r.commentaire ? ` — « ${r.commentaire} »` : ""}`;
     const [e] = await db.select().from(evaluations).where(and(eq(evaluations.auditId, q.auditId), eq(evaluations.critereId, c.id)));
-    const peutEcrire = audit.statut === "brouillon" && statut !== null && (!e || e.statut === null || e.source === "client" || (e.source === "auto" && statut === "N.A."));
+    // Lot B2 : la réponse du client arrive dans « À valider » (proposition), le CSM la valide ou la corrige
+    const peutEcrire = audit.statut === "brouillon" && statut !== null && (!e || e.statut === null);
     const proposition = { statut, valeur, texte, confiance: "moyenne", source: "client", preuve: { texte, source: "Questionnaire client" } };
     if (peutEcrire) {
-      const valeurs = { statut, valeur: valeur === null ? e?.valeur ?? null : String(valeur), source: "client", commentaire: texte, aEnvoyerClient: false, auteurId: null, critereVersion: c.version, updatedAt: new Date() };
+      const valeurs = { proposition, preuve: proposition.preuve, confiance: "moyenne", valeur: valeur === null ? e?.valeur ?? null : String(valeur), source: "client", commentaire: texte, aEnvoyerClient: false, critereVersion: c.version, updatedAt: new Date() };
       if (e) await db.update(evaluations).set(valeurs).where(eq(evaluations.id, e.id));
-      else await db.insert(evaluations).values({ auditId: q.auditId, critereId: c.id, ...valeurs, proposition });
-      await db.insert(evaluationHistorique).values({ auditId: q.auditId, critereId: c.id, statut, valeur: valeurs.valeur, commentaire: texte, aEnvoyerClient: false, auteurId: null });
+      else await db.insert(evaluations).values({ auditId: q.auditId, critereId: c.id, statut: null, ...valeurs });
+      await db.insert(evaluationHistorique).values({ auditId: q.auditId, critereId: c.id, statut: null, valeur: valeurs.valeur, commentaire: texte, aEnvoyerClient: false, auteurId: null });
       reportees++;
     } else {
       // Réponse à arbitrer par le CSM : on garde le résultat automatique, la réponse va en commentaire

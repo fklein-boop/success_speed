@@ -9,6 +9,7 @@ import { BoutonImport } from "@/components/import/ImportProvider";
 import { PortfolioView } from "@/components/portefeuille/PortfolioView";
 import { AFaire } from "@/components/pilotage/AFaire";
 import { aFaire } from "@/lib/server/pilotage";
+import { RechercheClient } from "@/components/portefeuille/RechercheClient";
 
 export default async function PortefeuillePage() {
   const user = await requireUser();
@@ -37,6 +38,10 @@ export default async function PortefeuillePage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <RechercheClient clients={rows.map((r) => ({ id: r.id, nom: r.nom, groupe: r.groupe }))} />
+        <a href="#mes-clients" className="btn-discret text-sm">Mes clients ↓</a>
+      </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl">Portefeuille</h1>

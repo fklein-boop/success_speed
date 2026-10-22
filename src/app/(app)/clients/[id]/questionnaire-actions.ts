@@ -9,10 +9,11 @@ import { annulerQuestionnaire, creerQuestionnaire, envoyerQuestionnaire } from "
 type Etat = { ok?: boolean; message?: string; erreur?: string; lien?: string } | null;
 const erreur = (e: unknown): Etat => ({ erreur: e instanceof AuditError || e instanceof Error ? e.message : "Erreur inattendue" });
 
-export async function creerQuestionnaireAction(clientId: string, auditId: number, email: string, envoyer: boolean): Promise<Etat> {
+export async function creerQuestionnaireAction(clientId: string, auditId: number, email: string, envoyer: boolean, criteres?: string[]): Promise<Etat> {
   const u = await assertUser(["superadmin", "csm"]);
   try {
-    const r = await creerQuestionnaire(await getDb(), auditId, u.id, { email, envoyer });
+    const r = await creerQuestionnaire(await getDb(), auditId, u.id, { email, envoyer, criteres });
+    revalidatePath(`/audits/${auditId}`);
     revalidatePath(`/clients/${clientId}`);
     return { ok: true, lien: r.lien, message: envoyer ? `Questionnaire de ${r.questions} questions envoyé à ${email}.` : `Lien créé (${r.questions} questions) : copiez-le pour l'envoyer vous-même.` };
   } catch (e) { return erreur(e); }

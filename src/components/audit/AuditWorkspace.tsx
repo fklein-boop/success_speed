@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, ArrowRight, CheckCheck, ChevronLeft, Download, FileCheck2, Keyboard, Lock, RotateCcw, Scale, Send, UserPlus, Users,
+  ArrowLeft, ArrowRight, CheckCheck, ChevronLeft, Copy, Download, ExternalLink, FileCheck2, Keyboard, Loader2, Lock, Presentation, RotateCcw, Scale, Search, Send, UserPlus, Users,
 } from "lucide-react";
+import { GUIDES, lienGuide, statutComptage } from "@/lib/audit/guides";
+import { repartitionParDefaut, type Repondant } from "@/lib/audit/repartition";
+import { creerQuestionnaireAction } from "@/app/(app)/clients/[id]/questionnaire-actions";
 import {
   compareCriteres, computeScore, SEUIL_FIABILITE, statutFromSeuil, type EvalScore, type Statut,
 } from "@/lib/audit/score";
@@ -32,7 +35,13 @@ interface State {
   precedent: { audit: Audit; evaluations: Evaluation[] } | null;
   users: { id: number; nom: string | null; email: string; role: string; actif: boolean }[];
 }
-type Mode = "A" | "B" | "vue";
+type Mode = "recap" | "A" | "B" | "vue";
+/** Données complémentaires : exports disponibles, fiche Google, questionnaire client en cours */
+interface Extra {
+  exports: string[];
+  placeId: string | null;
+  questionnaire: { statut: string; lien: string | null; email: string | null; questions: string[]; envoyeLe: string | null; reponduLe: string | null } | null;
+}
 
 const TOUCHES: Record<string, Statut> = { o: "OUI", n: "NON", p: "PARTIELLEMENT", c: "CORRIGÉ", a: "N.A." };
 const BOUTONS: { s: Statut; k: string; l: string; cls: string }[] = [
@@ -48,7 +57,7 @@ async function post<T>(url: string, body: unknown): Promise<{ ok: boolean; statu
   return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
 }
 
-export function AuditWorkspace({ initial, me, editable: peutEditer }: { initial: State; me: { id: number; role: string }; editable: boolean }) {
+export function AuditWorkspace({ initial, extra, me, editable: peutEditer }: { initial: State; extra: Extra; me: { id: number; role: string }; editable: boolean }) {
   const router = useRouter();
   const { audit, client, criteres, precedent, users } = initial;
   const crit = useMemo(() => [...criteres].sort(compareCriteres), [criteres]);
@@ -66,7 +75,12 @@ export function AuditWorkspace({ initial, me, editable: peutEditer }: { initial:
   const fileB = crit.filter((c) => { const e = evals.get(c.id); return !e || (e.statut === null && !e.aEnvoyerClient && !e.proposition); });
   const envoyes = crit.filter((c) => evals.get(c.id)?.aEnvoyerClient && !evals.get(c.id)?.statut);
 
-  const [mode, setMode] = useState<Mode>(() => (statutAudit !== "brouillon" ? "vue" : propsEnAttente.length ? "A" : "B"));
+  // Une fois les deux étapes faites, l'audit s'ouvre sur le récapitulatif (lot B4)
+  const [mode, setMode] = useState<Mode>(() => (statutAudit !== "brouillon" ? "vue" : propsEnAttente.length ? "A" : fileB.length ? "B" : "recap"));
+  const valides = crit.filter((c) => { const e = evals.get(c.id); return !!e?.statut && !!e.proposition; });
+  const domaine = (() => { try { return audit.urlAuditee ? new URL(audit.urlAuditee).hostname.replace(/^www\./, "") : null; } catch { return null; } })();
+  const pagesSociales = ((evals.get("VIS-01")?.proposition?.preuve?.extrait ?? "") as string).split("\n").filter((l) => /^https?:\/\//.test(l));
+  const ctxCarte = { auditId: audit.id, site: audit.urlAuditee, domaine, nom: client.nom, placeId: extra.placeId, pagesSociales };
   const [focusId, setFocusId] = useState<string | null>(() => fileB[0]?.id ?? null);
   const [aide, setAide] = useState(false);
   const [message, setMessage] = useState<{ t: "ok" | "err"; m: string } | null>(null);
@@ -254,20 +268,33 @@ export function AuditWorkspace({ initial, me, editable: peutEditer }: { initial:
 
       {/* ───────── Onglets ───────── */}
       <div role="tablist" aria-label="Étapes de l'audit" className="flex flex-wrap gap-2">
+        <Onglet actif={mode === "recap"} onClick={() => setMode("recap")}>Où en est l&apos;audit</Onglet>
         {editable && <Onglet actif={mode === "A"} onClick={() => setMode("A")}>A. Valider l&apos;automatique <Compteur n={propsEnAttente.length} /></Onglet>}
         {editable && <Onglet actif={mode === "B"} onClick={() => { setMode("B"); if (!focusId || !fileB.some((f) => f.id === focusId)) setFocusId(fileB[0]?.id ?? null); }}>B. Répondre au reste <Compteur n={fileB.length} /></Onglet>}
         <Onglet actif={mode === "vue"} onClick={() => setMode("vue")}>Vue d&apos;ensemble par pilier</Onglet>
       </div>
 
+      {(mode === "A" || mode === "B") && editable && <PiliersMini piliers={score.piliers} />}
+
+      {mode === "recap" && (
+        <Recapitulatif score={score} aValider={propsEnAttente} fileB={fileB} envoyes={envoyes} evals={evals} questionnaire={extra.questionnaire} catalogue={extra.exports.includes("catalogue")}
+          onAller={(m, id) => { setMode(m); if (id) setFocusId(id); }} />
+      )}
+
       {mode === "A" && editable && (
-        <EtapeA sures={sures} aVerifier={aVerifier} evals={evals} onValiderSures={validerSures}
+        <EtapeA client={client.nom} sures={sures} aVerifier={aVerifier} valides={valides} evals={evals} nomDe={nomDe} onValiderSures={validerSures}
           onConfirmer={(c) => { const e = evals.get(c.id)!; void enregistrer({ critereId: c.id, statut: e.proposition!.statut, valeur: e.proposition!.valeur, commentaire: e.commentaire, aEnvoyerClient: false }); }}
           onCorriger={(c) => { setMode("B"); setFocusId(c.id); }} />
       )}
 
       {mode === "B" && editable && (
+        <Repartition auditId={audit.id} clientId={client.id} restants={fileB} questionnaire={extra.questionnaire} catalogue={extra.exports.includes("catalogue")}
+          onEnvoye={(ids) => { setEvals((m) => { const n = new Map(m); for (const id of ids) { const e = n.get(id); n.set(id, { ...(e ?? { id: -1, critereId: id, statut: null, valeur: null, source: null, confiance: null, commentaire: null, proposition: null, preuve: null, auteurId: me.id, updatedAt: new Date().toISOString() }), aEnvoyerClient: true }); } return n; }); if (focusId && ids.includes(focusId)) setFocusId(suivant(focusId)); router.refresh(); }} />
+      )}
+
+      {mode === "B" && editable && (
         focusId && critById.get(focusId) ? (
-          <Carte key={focusId} c={critById.get(focusId)!} e={evals.get(focusId) ?? null} prec={prec.get(focusId) ?? null} precDate={precedent?.audit.date ?? null}
+          <Carte key={focusId} ctx={ctxCarte} c={critById.get(focusId)!} e={evals.get(focusId) ?? null} prec={prec.get(focusId) ?? null} precDate={precedent?.audit.date ?? null}
             restants={fileB.length} conflit={conflit?.critereId === focusId ? conflit : null} nomDe={nomDe}
             presentsIci={presents.filter((p) => p.critereId === focusId)}
             onResoudre={async (garder) => {
@@ -292,7 +319,7 @@ export function AuditWorkspace({ initial, me, editable: peutEditer }: { initial:
       )}
 
       {mode === "vue" && (
-        <VueEnsemble crit={crit} evals={evals} prec={prec} score={score} nomDe={nomDe} editable={editable}
+        <VueEnsemble crit={crit} evals={evals} prec={prec} score={score} nomDe={nomDe} editable={editable} presentation={`/clients/${client.id}/presentation?audit=${audit.id}`}
           onOuvrir={(id) => { setMode("B"); setFocusId(id); }} />
       )}
     </div>
@@ -314,15 +341,18 @@ function AideClavier() {
 }
 
 // ───────── Étape A : valider l'automatique ─────────
-function EtapeA({ sures, aVerifier, evals, onValiderSures, onConfirmer, onCorriger }: {
-  sures: Critere[]; aVerifier: Critere[]; evals: Map<string, Evaluation>;
+function EtapeA({ client, sures, aVerifier, valides, evals, nomDe, onValiderSures, onConfirmer, onCorriger }: {
+  client: string; sures: Critere[]; aVerifier: Critere[]; valides: Critere[]; evals: Map<string, Evaluation>; nomDe: (id: number | null) => string;
   onValiderSures: () => void; onConfirmer: (c: Critere) => void; onCorriger: (c: Critere) => void;
 }) {
-  if (!sures.length && !aVerifier.length) {
-    return <div className="carte p-8 text-center text-gris-texte">Aucun résultat automatique en attente. Lancez le pré-audit depuis la fiche client pour obtenir les résultats du scan du site. Les critères calculés sur les données SpeedResa sont proposés ici à la création de l&apos;audit.</div>;
-  }
+  const duClient = aVerifier.filter((c) => evals.get(c.id)?.proposition?.source === "client");
+  const autres = aVerifier.filter((c) => !duClient.includes(c));
+  const [voirValides, setVoirValides] = useState(false);
   return (
     <div className="space-y-4">
+      <p className="rounded-lg border border-horizon/30 bg-horizon/5 p-3 text-sm">
+        Le scan et les données SpeedResa ont vérifié {client}. <strong>Ces résultats ne comptent dans le score qu&apos;une fois validés par vous.</strong> Validez ceux qui sont justes ; corrigez les autres avec « Corriger » : votre réponse remplace celle du scan, et elle est gardée pour le prochain audit. Un résultat validé reste modifiable jusqu&apos;à la finalisation.
+      </p>
       {sures.length > 0 && (
         <section className="carte p-4" aria-labelledby="sures-titre">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -334,12 +364,39 @@ function EtapeA({ sures, aVerifier, evals, onValiderSures, onConfirmer, onCorrig
           </ul>
         </section>
       )}
-      {aVerifier.length > 0 && (
+      {duClient.length > 0 && (
+        <section className="carte p-4" aria-labelledby="client-titre">
+          <h2 id="client-titre" className="text-lg">Réponses du client</h2>
+          <p className="text-sm text-gris-texte">Arrivées par le questionnaire : validez-les ou corrigez-les.</p>
+          <ul className="mt-3 divide-y divide-gris-clair">
+            {duClient.map((c) => <LigneProposition key={c.id} c={c} e={evals.get(c.id)!} onConfirmer={onConfirmer} onCorriger={onCorriger} />)}
+          </ul>
+        </section>
+      )}
+      {autres.length > 0 && (
         <section className="carte p-4" aria-labelledby="verif-titre">
           <h2 id="verif-titre" className="text-lg">À vérifier (confiance moyenne ou basse)</h2>
           <ul className="mt-3 divide-y divide-gris-clair">
-            {aVerifier.map((c) => <LigneProposition key={c.id} c={c} e={evals.get(c.id)!} onConfirmer={onConfirmer} onCorriger={onCorriger} />)}
+            {autres.map((c) => <LigneProposition key={c.id} c={c} e={evals.get(c.id)!} onConfirmer={onConfirmer} onCorriger={onCorriger} />)}
           </ul>
+        </section>
+      )}
+      {!sures.length && !aVerifier.length && <p className="carte p-6 text-center text-gris-texte">Tous les résultats automatiques sont validés.</p>}
+      {valides.length > 0 && (
+        <section className="carte p-4" aria-labelledby="valides-titre">
+          <button className="flex w-full items-center justify-between text-left" onClick={() => setVoirValides((x) => !x)} aria-expanded={voirValides}>
+            <h2 id="valides-titre" className="text-lg">Déjà validés ({valides.length})</h2><span className="text-sm text-horizon">{voirValides ? "Masquer" : "Afficher"}</span>
+          </button>
+          {voirValides && (
+            <ul className="mt-3 divide-y divide-gris-clair">
+              {valides.map((c) => { const e = evals.get(c.id)!; return (
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                  <span><span className="text-xs text-gris-texte">{c.id}</span> {c.critere}</span>
+                  <span className="flex items-center gap-3"><StatutBadge statut={e.statut} small /><span className="text-xs text-gris-texte">validé par {nomDe(e.auteurId)} le {fmtDate(e.updatedAt)}</span><button className="btn-discret px-2 py-1 text-xs" onClick={() => onCorriger(c)}>Corriger</button></span>
+                </li>
+              ); })}
+            </ul>
+          )}
         </section>
       )}
     </div>
@@ -368,8 +425,10 @@ function LigneProposition({ c, e, onConfirmer, onCorriger }: { c: Critere; e: Ev
 }
 
 // ───────── Étape B : une question à la fois ─────────
-function Carte({ c, e, prec, precDate, restants, conflit, nomDe, presentsIci, onRepondre, onPasser, onResoudre }: {
-  c: Critere; e: Evaluation | null; prec: Evaluation | null; precDate: string | null; restants: number;
+interface CtxCarte { auditId: number; site: string | null; domaine: string | null; nom: string; placeId: string | null; pagesSociales: string[] }
+
+function Carte({ ctx, c, e, prec, precDate, restants, conflit, nomDe, presentsIci, onRepondre, onPasser, onResoudre }: {
+  ctx: CtxCarte; c: Critere; e: Evaluation | null; prec: Evaluation | null; precDate: string | null; restants: number;
   conflit: { theirs: Evaluation } | null; nomDe: (id: number | null) => string; presentsIci: { nom: string | null; email: string }[];
   onRepondre: (i: { statut: Statut | null; valeur: number | null; commentaire: string | null; aEnvoyerClient: boolean }) => Promise<boolean>;
   onPasser: (sens: 1 | -1) => void; onResoudre: (garder: "leur" | "mienne") => void;
@@ -433,7 +492,7 @@ function Carte({ c, e, prec, precDate, restants, conflit, nomDe, presentsIci, on
       </div>
       {c.obligationLegale && <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-rouge/10 px-2.5 py-0.5 text-xs font-semibold text-rouge-texte"><Scale size={12} aria-hidden /> Obligation légale</p>}
       <h2 id={`crit-${c.id}`} className="mt-2 text-xl leading-snug">{c.critere}</h2>
-      {c.commentVerifier && <p className="mt-2 text-sm"><span className="font-semibold">Comment vérifier : </span>{c.commentVerifier}</p>}
+      <GuideBloc c={c} ctx={ctx} enCours={enCours} onRetenir={(statut, v, com) => void repondre(statut, { valeur: v, commentaire: [commentaire.trim(), com].filter(Boolean).join("\n") })} />
       {presentsIci.length > 0 && <p className="mt-2 text-sm text-horizon">{presentsIci.map((p) => p.nom || p.email).join(", ")} regarde aussi ce critère.</p>}
 
       {conflit && (
@@ -505,13 +564,17 @@ function Carte({ c, e, prec, precDate, restants, conflit, nomDe, presentsIci, on
 }
 
 // ───────── Vue d'ensemble ─────────
-function VueEnsemble({ crit, evals, prec, score, nomDe, editable, onOuvrir }: {
+function VueEnsemble({ crit, evals, prec, score, nomDe, editable, presentation, onOuvrir }: {
   crit: Critere[]; evals: Map<string, Evaluation>; prec: Map<string, Evaluation>; score: ReturnType<typeof computeScore>;
-  nomDe: (id: number | null) => string; editable: boolean; onOuvrir: (id: string) => void;
+  nomDe: (id: number | null) => string; editable: boolean; presentation: string; onOuvrir: (id: string) => void;
 }) {
   const piliers = [...new Set(crit.map((c) => c.pilier))];
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gris-texte">Vue interne (commentaires, auteurs). Pour le rendez-vous, utilisez la présentation : sans aucune donnée interne.</p>
+        <Link href={presentation} className="btn-primaire"><Presentation size={16} aria-hidden /> Présenter au client</Link>
+      </div>
       {!editable && <p className="flex items-center gap-2 text-sm text-gris-texte"><Lock size={14} aria-hidden /> Audit en lecture seule.</p>}
       {piliers.map((p) => {
         const s = score.piliers.find((x) => x.pilier === p)!;
@@ -563,5 +626,212 @@ function LiensPreuve({ p }: { p: PreuveData }) {
       {p.source && <span>Source : {p.source}{p.periode ? ` — ${p.periode}` : ""}</span>}
       {p.requete && <span className="break-all font-mono">{p.requete.slice(0, 120)}</span>}
     </p>
+  );
+}
+
+// ───────── Comment vérifier (lot B3) ─────────
+function GuideBloc({ c, ctx, enCours, onRetenir }: { c: Critere; ctx: CtxCarte; enCours: boolean; onRetenir: (s: Statut, valeur: number, commentaire: string) => void }) {
+  const g = GUIDES[c.id];
+  const [n, setN] = useState("");
+  if (!g) return c.commentVerifier ? <p className="mt-2 text-sm"><span className="font-semibold">Comment vérifier : </span>{c.commentVerifier}</p> : null;
+  const liens = (g.liens ?? []).map((l) => ({ ...l, href: lienGuide(l.url, ctx) })).filter((l): l is typeof l & { href: string } => !!l.href);
+  const nb = /^\s*\d{1,3}\s*$/.test(n) ? Number(n) : null;
+  return (
+    <div className="mt-3 rounded-lg border border-lagon/50 bg-lagon/10 p-3 text-sm">
+      <p className="font-semibold">Comment vérifier</p>
+      {g.definition && <p className="mt-1 italic">{g.definition}</p>}
+      <ol className="mt-1 list-decimal space-y-0.5 pl-5">{g.etapes.map((x) => <li key={x}>{x}</li>)}</ol>
+      {(liens.length > 0 || (c.id === "VIS-05" && ctx.pagesSociales.length > 0)) && (
+        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+          {c.id === "VIS-05" && ctx.pagesSociales.map((u) => <a key={u} href={u} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-horizon hover:underline">{new URL(u).hostname.replace(/^www\./, "")} <ExternalLink size={11} aria-hidden /></a>)}
+          {liens.map((l) => <a key={l.libelle} href={l.href} target={l.href.startsWith("/") ? undefined : "_blank"} rel="noopener noreferrer" className="inline-flex items-center gap-1 text-horizon hover:underline">{l.libelle} <ExternalLink size={11} aria-hidden /></a>)}
+        </p>
+      )}
+      {g.comptage && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <label htmlFor={`cpt-${c.id}`} className="text-xs font-semibold">{g.comptage.libelle}</label>
+          <input id={`cpt-${c.id}`} inputMode="numeric" value={n} onChange={(ev) => setN(ev.target.value)} className="champ w-20 py-1" placeholder="0" />
+          {nb !== null && <><span className="text-xs">→ <StatutBadge statut={statutComptage(g.comptage, nb)} small /></span>
+            <button className="btn-secondaire px-2 py-1 text-xs" disabled={enCours} onClick={() => onRetenir(statutComptage(g.comptage!, nb), nb, `${nb} publication(s) d'offres avec lien direct sur 4 semaines (comptage CSM).`)}>Retenir</button></>}
+        </div>
+      )}
+      {c.id === "VIS-04" && <Relais auditId={ctx.auditId} enCours={enCours} onRetenir={onRetenir} />}
+    </div>
+  );
+}
+
+/** VIS-04 : pages qui citent le site (recherche web de Claude), à cocher par le CSM. */
+function Relais({ auditId, enCours, onRetenir }: { auditId: number; enCours: boolean; onRetenir: (s: Statut, valeur: number, commentaire: string) => void }) {
+  const [etat, setEtat] = useState<{ chargement?: boolean; erreur?: string; relais?: { url: string; domaine: string; type: string }[] }>({});
+  const [coches, setCoches] = useState<Set<string>>(new Set());
+  const chercher = async () => {
+    setEtat({ chargement: true });
+    const r = await post<{ relais: { url: string; domaine: string; type: string }[] }>(`/api/audits/${auditId}/relais`, {});
+    if (!r.ok) return setEtat({ erreur: r.data.erreur ?? "Recherche impossible" });
+    setEtat({ relais: r.data.relais });
+    setCoches(new Set(r.data.relais.filter((x) => ["mairie", "CSE", "office de tourisme"].includes(x.type)).map((x) => x.url)));
+  };
+  const n = coches.size;
+  const statut: Statut = n >= 2 ? "OUI" : n === 1 ? "PARTIELLEMENT" : "NON";
+  return (
+    <div className="mt-2">
+      {!etat.relais && <button className="btn-secondaire px-3 py-1 text-xs" onClick={chercher} disabled={etat.chargement}>{etat.chargement ? <Loader2 size={12} className="animate-spin" aria-hidden /> : <Search size={12} aria-hidden />} {etat.chargement ? "Recherche sur le web (environ 30 s)…" : "Chercher les relais"}</button>}
+      {etat.erreur && <p role="alert" className="mt-1 text-xs text-rouge-texte">{etat.erreur}</p>}
+      {etat.relais && (
+        <div className="mt-1">
+          {etat.relais.length ? (
+            <ul className="max-h-56 space-y-1 overflow-y-auto">
+              {etat.relais.map((x) => (
+                <li key={x.url} className="flex items-start gap-2 text-xs">
+                  <input type="checkbox" id={`rel-${x.url}`} checked={coches.has(x.url)} onChange={(ev) => setCoches((s) => { const t = new Set(s); if (ev.target.checked) t.add(x.url); else t.delete(x.url); return t; })} className="mt-0.5" />
+                  <label htmlFor={`rel-${x.url}`}><span className="rounded bg-white px-1">{x.type}</span> <a href={x.url} target="_blank" rel="noopener noreferrer" className="break-all text-horizon hover:underline">{x.url.replace(/^https?:\/\//, "").slice(0, 90)}</a></label>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-xs text-gris-texte">Aucune page trouvée : utilisez les liens de recherche ci-dessus.</p>}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs">{n} relais coché(s) → <StatutBadge statut={statut} small /></span>
+            <button className="btn-secondaire px-2 py-1 text-xs" disabled={enCours} onClick={() => onRetenir(statut, n, n ? `Relais vérifiés : ${[...coches].join(" ; ")}` : "Aucun relais local trouvé (recherche web).")}>Retenir</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ───────── Vue par pilier en direct, avec animation du pilier qui bouge (lot B1) ─────────
+function PiliersMini({ piliers }: { piliers: ReturnType<typeof computeScore>["piliers"] }) {
+  const avant = useRef(new Map<string, number | null>());
+  const [bouge, setBouge] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const changes = piliers.filter((p) => avant.current.has(p.pilier) && avant.current.get(p.pilier) !== p.score).map((p) => p.pilier);
+    for (const p of piliers) avant.current.set(p.pilier, p.score);
+    if (!changes.length) return;
+    setBouge(new Set(changes));
+    const t = setTimeout(() => setBouge(new Set()), 1800);
+    return () => clearTimeout(t);
+  }, [piliers]);
+  return (
+    <section aria-label="Score par pilier en direct" className="carte grid grid-cols-2 gap-x-4 gap-y-2 p-3 sm:grid-cols-3 lg:grid-cols-5">
+      {piliers.map((p) => (
+        <div key={p.pilier} className={`rounded-lg p-1.5 transition-colors duration-700 ${bouge.has(p.pilier) ? "bg-emeraude/25 ring-2 ring-emeraude" : ""}`}>
+          <p className="truncate text-xs text-gris-texte" title={p.pilier}>{p.pilier}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="h-2 flex-1 overflow-hidden rounded-full bg-gris-clair" aria-hidden><span className="block h-full bg-horizon transition-all duration-700" style={{ width: `${p.score ?? 0}%` }} /></span>
+            <span className="w-8 text-right text-xs font-semibold tabular-nums">{p.score === null ? "—" : Math.round(p.score)}</span>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+// ───────── Répartir les questions entre le CSM et le client (lot B2) ─────────
+function Repartition({ auditId, clientId, restants, questionnaire, catalogue, onEnvoye }: {
+  auditId: number; clientId: string; restants: Critere[]; questionnaire: Extra["questionnaire"]; catalogue: boolean; onEnvoye: (ids: string[]) => void;
+}) {
+  const [ouvert, setOuvert] = useState(false);
+  const [choix, setChoix] = useState<Record<string, Repondant>>({});
+  const [email, setEmail] = useState(questionnaire?.email ?? "");
+  const [etat, setEtat] = useState<{ chargement?: boolean; erreur?: string; ok?: string; lien?: string | null }>({ lien: questionnaire?.lien ?? null });
+  const [copie, setCopie] = useState(false);
+  const qui = (c: Critere) => choix[c.id] ?? repartitionParDefaut(c, catalogue).qui;
+  const pourClient = restants.filter((c) => qui(c) === "client");
+  const enAttente = questionnaire?.statut === "en_attente" ? questionnaire.questions : [];
+  const generer = async (envoyer: boolean) => {
+    setEtat({ chargement: true });
+    // Le nouveau lien remplace le précédent : il reprend ses questions encore sans réponse
+    const ids = [...new Set([...pourClient.map((c) => c.id), ...enAttente])];
+    const r = await creerQuestionnaireAction(clientId, auditId, email, envoyer, ids);
+    if (r?.erreur) return setEtat({ erreur: r.erreur });
+    setEtat({ ok: r?.message, lien: r?.lien ?? null });
+    onEnvoye(pourClient.map((c) => c.id));
+  };
+  return (
+    <section className="carte p-4" aria-labelledby="repartir-titre">
+      <button className="flex w-full flex-wrap items-center justify-between gap-2 text-left" onClick={() => setOuvert((x) => !x)} aria-expanded={ouvert}>
+        <h2 id="repartir-titre" className="text-lg">Répartir les questions : {restants.length - pourClient.length} pour vous, {pourClient.length} pour le client</h2>
+        <span className="text-sm text-horizon">{ouvert ? "Masquer" : "Choisir et générer le lien client"}</span>
+      </button>
+      {etat.lien && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <span>Lien client en cours{questionnaire?.envoyeLe ? ` (envoyé le ${fmtDate(questionnaire.envoyeLe)})` : ""} :</span>
+          <input readOnly value={etat.lien} onFocus={(ev) => ev.currentTarget.select()} className="champ w-80 py-1 font-mono text-xs" aria-label="Lien du questionnaire client" />
+          <button className="btn-secondaire px-2 py-1 text-xs" onClick={async () => { try { await navigator.clipboard.writeText(etat.lien!); setCopie(true); } catch { setCopie(false); } }}><Copy size={12} aria-hidden /> {copie ? "Copié" : "Copier"}</button>
+        </div>
+      )}
+      {etat.ok && <p role="status" className="mt-2 text-sm text-[#0b7a5e]">{etat.ok}</p>}
+      {etat.erreur && <p role="alert" className="mt-2 text-sm text-rouge-texte">{etat.erreur}</p>}
+      {ouvert && (
+        <div className="mt-3">
+          <p className="text-sm text-gris-texte">Vous pouvez générer le lien maintenant et continuer vos propres questions : les réponses du client arriveront dans « Valider l&apos;automatique ».</p>
+          <ul className="mt-2 max-h-80 divide-y divide-gris-clair overflow-y-auto">
+            {restants.map((c) => { const d = repartitionParDefaut(c, catalogue); return (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-1.5 text-sm">
+                <span className="min-w-0 flex-1"><span className="text-xs text-gris-texte">{c.id}</span> {c.critere}{d.note && <span className="block text-xs text-gris-texte">Par défaut : {d.qui === "client" ? "client" : "vous"}, {d.note}</span>}</span>
+                <span className="inline-flex overflow-hidden rounded-full border border-gris-clair text-xs" role="radiogroup" aria-label={`Qui répond à ${c.id}`}>
+                  {(["csm", "client"] as Repondant[]).map((r) => (
+                    <button key={r} role="radio" aria-checked={qui(c) === r} onClick={() => setChoix((x) => ({ ...x, [c.id]: r }))} className={`px-3 py-1 ${qui(c) === r ? "bg-minuit text-white" : "bg-white"}`}>{r === "csm" ? "CSM" : "Client"}</button>
+                  ))}
+                </span>
+              </li>
+            ); })}
+          </ul>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button className="btn-primaire" disabled={etat.chargement || (!pourClient.length && !enAttente.length)} onClick={() => generer(false)}>{etat.chargement && <Loader2 size={14} className="animate-spin" aria-hidden />} Générer le lien client ({new Set([...pourClient.map((c) => c.id), ...enAttente]).size} questions)</button>
+            <label className="sr-only" htmlFor="email-client">Email du client</label>
+            <input id="email-client" type="email" value={email} onChange={(ev) => setEmail(ev.target.value)} placeholder="email du client (facultatif)" className="champ w-60 py-1.5" />
+            <button className="btn-secondaire" disabled={etat.chargement || !email || (!pourClient.length && !enAttente.length)} onClick={() => generer(true)}><Send size={14} aria-hidden /> Envoyer par email</button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ───────── Où en est l'audit (lot B4) ─────────
+function Recapitulatif({ score, aValider, fileB, envoyes, evals, questionnaire, catalogue, onAller }: {
+  score: ReturnType<typeof computeScore>; aValider: Critere[]; fileB: Critere[]; envoyes: Critere[]; evals: Map<string, Evaluation>;
+  questionnaire: Extra["questionnaire"]; catalogue: boolean; onAller: (m: Mode, id?: string) => void;
+}) {
+  const questions = [
+    ...envoyes.map((c) => ({ c, qui: `Client — questionnaire${questionnaire?.envoyeLe ? ` envoyé le ${fmtDate(questionnaire.envoyeLe)}` : questionnaire?.lien ? " (lien créé, pas encore envoyé par email)" : ""}` })),
+    ...fileB.map((c) => ({ c, qui: repartitionParDefaut(c, catalogue).qui === "client" ? "Client (à mettre dans le questionnaire)" : "CSM" })),
+  ];
+  return (
+    <div className="space-y-4">
+      <section className="grid gap-4 md:grid-cols-2">
+        <div className="carte p-4">
+          <p className="libelle">1. Maturité</p>
+          <p className="mt-1 flex items-baseline gap-2"><span className="font-titres text-4xl font-bold tabular-nums">{score.score === null ? "—" : Math.round(score.score)}</span><span className="text-sm text-gris-texte">/100</span><MaturiteBadge score={score.score} /></p>
+          <p className="text-sm text-gris-texte">Score visé après actions : {score.scoreApres === null ? "—" : Math.round(score.scoreApres)}/100</p>
+        </div>
+        <div className="carte p-4">
+          <p className="libelle">2. Couverture</p>
+          <p className="mt-1 font-titres text-4xl font-bold tabular-nums">{Math.round(score.couverture * 100)} %</p>
+          <p className={`text-sm ${score.fiable ? "text-gris-texte" : "font-semibold text-rouge-texte"}`}>{score.fiable ? "Score fiable (70 % ou plus)." : "Moins de 70 % : le score n'est pas encore fiable."}</p>
+        </div>
+      </section>
+      <section className="carte p-4" aria-labelledby="rv-titre">
+        <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="rv-titre" className="text-lg">3. Points restant à valider ({aValider.length})</h2>{aValider.length > 0 && <button className="btn-secondaire" onClick={() => onAller("A")}>Valider</button>}</div>
+        {aValider.length ? (
+          <ul className="mt-2 text-sm">{aValider.map((c) => <li key={c.id} className="py-0.5"><span className="text-xs text-gris-texte">{c.id}</span> {c.critere}{evals.get(c.id)?.proposition?.source === "client" && <span className="ml-2 rounded bg-lagon/30 px-1.5 text-xs">réponse du client</span>}</li>)}</ul>
+        ) : <p className="mt-1 text-sm text-gris-texte">Rien à valider.</p>}
+      </section>
+      <section className="carte p-4" aria-labelledby="qs-titre">
+        <h2 id="qs-titre" className="text-lg">4. Questions sans réponse ({questions.length})</h2>
+        {questions.length ? (
+          <ul className="mt-2 divide-y divide-gris-clair text-sm">
+            {questions.map(({ c, qui }) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span><span className="text-xs text-gris-texte">{c.id}</span> {c.critere}</span>
+                <span className="flex items-center gap-2 text-xs"><span className="rounded-full bg-gris-clair px-2 py-0.5">{qui}</span><button className="text-horizon hover:underline" onClick={() => onAller("B", c.id)}>Répondre</button></span>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="mt-1 text-sm text-gris-texte">Toutes les questions ont une réponse.</p>}
+      </section>
+      <div className="flex justify-center"><button className="btn-primaire" onClick={() => onAller("vue")}>5. Vue d&apos;ensemble par pilier →</button></div>
+    </div>
   );
 }

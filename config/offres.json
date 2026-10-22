@@ -65,5 +65,8 @@
   "Réservation instantanée + paiement en ligne": "fort",
   "Session paramétrage tarifaire": "faible",
   "Support technique connecteurs": "moyen"
+ },
+ "pistes": {
+  "Accompagnement facturation électronique": "Piste (retours du 22/10/2026) : aider le client à choisir sa plateforme agréée (réception obligatoire depuis le 01/09/2026, émission pour les PME au 01/09/2027). Effort à définir."
  }
 }

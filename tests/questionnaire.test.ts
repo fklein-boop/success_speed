@@ -118,15 +118,16 @@ describe("Parcours du questionnaire (lien magique, report dans l'audit, relances
     expect((await vueClient(db, t)).reponses["LEG-09"]).toEqual({ reponse: "oui", commentaire: "Nous sommes 6 salariés." });
   });
 
-  it("à l'envoi, les réponses alimentent l'audit (source client) et le lien est clos", async () => {
+  it("à l'envoi, les réponses arrivent dans « À valider » (propositions du client) et le lien est clos", async () => {
     const t = jetonDe(lien);
     const bilan = await soumettreQuestionnaire(db, t);
     expect(bilan.reportees).toBe(3); // LEG-09, PERF-13, PROD-01 ; « je ne sais pas » est ignoré
     const ev = async (id: string) => (await db.select().from(evaluations).where(and(eq(evaluations.auditId, auditId), eq(evaluations.critereId, id))))[0];
-    expect(await ev("LEG-09")).toMatchObject({ statut: "N.A.", source: "client" });
+    // Lot B2 : rien n'est compté dans le score tant que le CSM n'a pas validé
+    expect(await ev("LEG-09")).toMatchObject({ statut: null, source: "client", confiance: "moyenne", proposition: expect.objectContaining({ statut: "N.A.", source: "client" }) });
     expect((await ev("LEG-09")).commentaire).toContain("« Nous sommes 6 salariés. »");
-    expect(await ev("PERF-13")).toMatchObject({ statut: "PARTIELLEMENT", source: "client", aEnvoyerClient: false });
-    expect(await ev("PROD-01")).toMatchObject({ statut: "OUI", valeur: "0.9" });
+    expect(await ev("PERF-13")).toMatchObject({ statut: null, source: "client", aEnvoyerClient: false, proposition: expect.objectContaining({ statut: "PARTIELLEMENT" }) });
+    expect(await ev("PROD-01")).toMatchObject({ statut: null, valeur: "0.9", proposition: expect.objectContaining({ statut: "OUI" }) });
     await expect(soumettreQuestionnaire(db, t)).rejects.toThrow(/déjà/);
     await expect(enregistrerReponse(db, t, "VIS-05", "3", null)).rejects.toThrow(/déjà/);
     expect((await vueClient(db, t)).etat).toBe("repondu");

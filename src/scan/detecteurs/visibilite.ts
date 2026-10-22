@@ -70,7 +70,9 @@ export const VIS01: Detecteur = {
       `Lien vers la fiche Google depuis le site : ${lienGoogle ? "oui" : "non"}.`,
       place ? `${fichePreuve(place)} Site indiqué sur la fiche : ${place.site ?? "aucun"}.` : ctx.placesDisponible ? `Fiche Google introuvable${erreur ? ` (${erreur})` : ""}.` : "Fiche Google non consultée (clé Google Places non configurée).",
     ].join(" ");
-    const preuve = { texte: lignes, url: place?.urlMaps ?? lienGoogle?.href ?? home.urlFinale, source: place ? "Google Places + page d'accueil" : "Page d'accueil" };
+    // Pages sociales trouvées (une par réseau) : ouvertes depuis la carte VIS-05 pour compter les publications
+    const pagesSociales = RESEAUX.map(([, re]) => tous.find((l) => re.test(l.href))?.href).filter((h): h is string => !!h);
+    const preuve = { texte: lignes, url: place?.urlMaps ?? lienGoogle?.href ?? home.urlFinale, source: place ? "Google Places + page d'accueil" : "Page d'accueil", ...(pagesSociales.length ? { extrait: pagesSociales.join("\n") } : {}) };
     const confiance = place && place.correspondance !== "nom" ? "haute" : "moyenne";
     if (place && siteSurFiche && reseaux.length) return { statut: "OUI", valeur: reseaux.length, texte: `Site indiqué sur la fiche Google et relié à ${reseaux.length} réseau(x) social(aux).`, confiance, preuve };
     if (place && !siteSurFiche) return { statut: reseaux.length ? "PARTIELLEMENT" : "NON", valeur: reseaux.length, texte: `La fiche Google n'indique pas le site${reseaux.length ? "" : " et aucun réseau social n'est lié"}.`, confiance: "moyenne", preuve };
