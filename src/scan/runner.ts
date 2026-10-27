@@ -63,12 +63,18 @@ export async function executerDetecteurs(url: string, opts: ScanOptions = {}): P
   if (liste.some((d) => d.critereId.startsWith("PERF-1"))) void ctx.pagespeed().catch(() => null);
   if (liste.some((d) => d.critereId.startsWith("VIS-0"))) void ctx.place().catch(() => null);
 
+  const DELAI_CONTROLE_MS = Number(process.env.SCAN_DELAI_CONTROLE_MS ?? 120_000);
   for (const d of liste) {
     await opts.onProgress?.({ critereId: d.critereId, etat: "en_cours" });
     const debut = Date.now();
     let r: Resultat;
     try {
-      r = await d.run(ctx);
+      // Un contrôle bloqué (page qui ne répond pas, navigateur figé) ne doit pas bloquer tout le scan
+      let minuterie: ReturnType<typeof setTimeout> | undefined;
+      r = await Promise.race([
+        d.run(ctx),
+        new Promise<never>((_, ko) => { minuterie = setTimeout(() => ko(new Error(`délai dépassé (${Math.round(DELAI_CONTROLE_MS / 1000)} s)`)), DELAI_CONTROLE_MS); }),
+      ]).finally(() => clearTimeout(minuterie));
       if (d.navigateur && !navigateur && r.confiance === "haute") r = { ...r, confiance: "moyenne" };
     } catch (e) {
       r = nonVerifiable(`Contrôle impossible : ${e instanceof Error ? e.message : "erreur"}.`);

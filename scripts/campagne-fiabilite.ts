@@ -2,6 +2,7 @@
  * Campagne de fiabilité (lot E) en ligne de commande : met en file un pré-audit « fiabilité » par site client,
  * les exécute un par un (navigateur si disponible), puis écrit le rapport CSV. Utile tant que le worker n'est pas déployé.
  * Usage : npx tsx scripts/campagne-fiabilite.ts <fichier.csv> [export_dossiers.csv]
+ *         npx tsx scripts/campagne-fiabilite.ts <fichier.csv> --reprendre   (reprend la file d'une campagne interrompue)
  */
 import { readFile, writeFile } from "node:fs/promises";
 import { getDb } from "../src/db";
@@ -14,8 +15,14 @@ import { navigateurDisponible } from "../src/scan/browser";
 
 async function main() {
   const [sortie, exportDossiers] = process.argv.slice(2);
+  const reprendre = exportDossiers === "--reprendre";
   const db = await getDb();
-  if (exportDossiers) {
+  if (reprendre) {
+    // Scans restés « en cours » (processus interrompu) : remis en file
+    const { scanRuns } = await import("../src/db/schema");
+    const { and, eq } = await import("drizzle-orm");
+    await db.update(scanRuns).set({ statut: "en_attente" }).where(and(eq(scanRuns.type, "fiabilite"), eq(scanRuns.statut, "en_cours")));
+  } else if (exportDossiers) {
     const b = await readFile(exportDossiers);
     const sheet = await readTabularFile(exportDossiers, b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
     const r = rowsToDossiers(sheet.rows, detectColumns(sheet.headers).mapping);
@@ -24,7 +31,7 @@ async function main() {
     await applyImport(db, imp.id, null, { creer: [] });
   }
   console.log(`Navigateur : ${(await navigateurDisponible()) ? "oui" : "non"}`);
-  const c = await lancerCampagneFiabilite(db, null);
+  const c = reprendre ? { crees: Number.NaN, sites: 0, refus: [] } : await lancerCampagneFiabilite(db, null);
   console.log(`${c.crees} pré-audits en file sur ${c.sites} sites, ${c.refus.length} refusés`, c.refus);
   let n = 0;
   for (;;) {
