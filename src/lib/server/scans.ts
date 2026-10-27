@@ -12,7 +12,7 @@ import { recomputeAll } from "./recompute";
 import { logActivity } from "./activity";
 
 /** Crée un pré-audit : audit en cours (ouvert ou créé) + scan en file d'attente. */
-export async function creerScan(db: DB, clientId: string, url: string, userId: number | null, type: "complet" | "leger" | "verification" = "complet", criteresVerif: string[] = []) {
+export async function creerScan(db: DB, clientId: string, url: string, userId: number | null, type: "complet" | "leger" | "verification" | "fiabilite" = "complet", criteresVerif: string[] = []) {
   const urls = (await db.select().from(clientUrls).where(eq(clientUrls.clientId, clientId))).map((u) => u.url);
   // Scan uniquement sur les domaines du référentiel client
   if (!urls.includes(url)) throw new AuditError("Cette URL n'est pas enregistrée pour ce client.", 403);
@@ -21,7 +21,8 @@ export async function creerScan(db: DB, clientId: string, url: string, userId: n
     .where(and(eq(scanRuns.clientId, clientId), sql`${scanRuns.statut} in ('en_attente','en_cours')`, gt(scanRuns.createdAt, new Date(Date.now() - 15 * 60_000))));
   if (enCours.length && type !== "verification") return { id: enCours[0].id, existant: true };
   const audit = type === "complet" ? await createAudit(db, clientId, userId ?? 0) : null;
-  const ids = type === "complet" ? DETECTEURS.map((d) => d.critereId) : type === "leger" ? DETECTEURS_LEGERS : criteresVerif.filter((id) => DETECTEURS.some((d) => d.critereId === id));
+  // « fiabilite » (lot E) : tous les contrôles, sans créer d'audit
+  const ids = type === "complet" || type === "fiabilite" ? DETECTEURS.map((d) => d.critereId) : type === "leger" ? DETECTEURS_LEGERS : criteresVerif.filter((id) => DETECTEURS.some((d) => d.critereId === id));
   if (!ids.length) throw new AuditError("Aucun contrôle automatique pour ce critère.", 400);
   const [run] = await db.insert(scanRuns).values({ clientId, auditId: audit?.id ?? null, url, demandePar: userId, type, statut: "en_attente" }).returning();
   await db.insert(scanResults).values(ids.map((critereId) => ({ scanRunId: run.id, critereId, etat: "en_attente" })));

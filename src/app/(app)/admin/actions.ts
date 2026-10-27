@@ -12,6 +12,7 @@ import { planifierRescanMensuel, traiterFileScans } from "@/lib/server/scans";
 import { effacerGa4, enregistrerConfigGa4 } from "@/lib/server/ga4";
 import { CLE_SOURCE_ABANDON } from "@/lib/server/backoffice";
 import { enregistrerEquipes } from "@/lib/server/feuille";
+import { lancerCampagneFiabilite, marquerPlateforme } from "@/lib/server/fiabilite";
 import { DEFAULT_METRICS_PARAMS } from "@/lib/metrics/params";
 import { GROUPES_PARAMS, depuisSaisie } from "@/lib/metrics/libelles";
 import offresConfig from "../../../../config/offres.json";
@@ -226,4 +227,29 @@ export async function majEquipesAction(_: Etat, form: FormData): Promise<Etat> {
     revalidatePath("/admin/offres");
     return { ok: true, message: "Équipes enregistrées." };
   } catch (e) { return erreur(e); }
+}
+
+// ───────── Fiabilité des contrôles (lot E) ─────────
+
+export async function lancerFiabiliteAction(): Promise<Etat> {
+  const u = await admin();
+  const db = await getDb();
+  const r = await lancerCampagneFiabilite(db, u.id);
+  // Sans worker : une première partie tout de suite, la suite chaque nuit (tâche planifiée des scans)
+  if (process.env.SCAN_MODE !== "worker") after(async () => { await traiterFileScans(await getDb(), 280_000).catch(() => null); });
+  revalidatePath("/admin/fiabilite");
+  return { ok: true, message: `${r.crees} pré-audit(s) mis en file sur ${r.sites} site(s)${r.refus.length ? `, ${r.refus.length} refusé(s)` : ""}.${process.env.SCAN_MODE === "worker" ? " Le worker les traite (environ 1 à 2 minutes par site)." : " Sans worker, ils sont traités par lots (quelques-uns maintenant, la suite chaque nuit) et sans navigateur : beaucoup de contrôles resteront « non vérifiables »."}` };
+}
+
+export async function plateformeAction(critereId: string, plateforme: boolean): Promise<Etat> {
+  const u = await admin();
+  const db = await getDb();
+  await marquerPlateforme(db, u.id, critereId, plateforme);
+  // Scores des audits et portefeuille recalculés : un critère plateforme ne pénalise plus le client
+  const { audits: tAudits } = await import("@/db/schema");
+  const { refreshScore } = await import("@/lib/server/audits");
+  for (const a of await db.select({ id: tAudits.id }).from(tAudits)) await refreshScore(db, a.id);
+  await recomputeAll(db);
+  revalidatePath("/admin/fiabilite");
+  return { ok: true, message: `${critereId} ${plateforme ? "marqué « Plateforme » : il ne compte plus dans le score des clients" : "compte de nouveau dans le score"}.` };
 }

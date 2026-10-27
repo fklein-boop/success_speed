@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gt, inArray, lt, ne, or } from "drizzle-orm";
 import type { DB } from "@/db";
 import {
-  auditPresence, audits, clients, clientSnapshots, clientUrls, criteres, evaluationHistorique, evaluations, users,
+  auditPresence, audits, clients, clientSnapshots, clientUrls, criteres, evaluationHistorique, evaluations, parametres, users,
 } from "@/db/schema";
 import { compareCriteres, computeScore, statutFromSeuil, STATUTS, type CritereScore, type EvalScore, type ScoreResult, type Statut } from "@/lib/audit/score";
 import { propositionsDonnees } from "@/lib/audit/donnees";
@@ -20,12 +20,18 @@ export class AuditError extends Error {
   constructor(message: string, public status = 400, public data?: unknown) { super(message); }
 }
 
-/** Critères actifs, dernière version de chacun, dans l'ordre du référentiel. */
-export async function loadCriteres(db: DB): Promise<Critere[]> {
+/**
+ * Critères actifs, dernière version de chacun, dans l'ordre du référentiel.
+ * Les critères marqués « Plateforme » (lot E : résultat produit par les gabarits SpeedResa, pas par le client)
+ * restent affichés mais ne comptent plus : points ramenés à 0, donc ni dans le score ni dans le plan d'action.
+ */
+export async function loadCriteres(db: DB): Promise<(Critere & { plateforme?: boolean })[]> {
   const all = await db.select().from(criteres).orderBy(asc(criteres.id), desc(criteres.version));
   const seen = new Set<string>();
   const latest = all.filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
-  return latest.filter((c) => c.actif).sort(compareCriteres);
+  const [p] = await db.select().from(parametres).where(eq(parametres.cle, "criteres_plateforme"));
+  const plateforme = new Set((p?.valeur as string[] | undefined) ?? []);
+  return latest.filter((c) => c.actif).sort(compareCriteres).map((c) => (plateforme.has(c.id) ? { ...c, points: 0, plateforme: true } : c));
 }
 
 export const toCritereScore = (c: Critere): CritereScore => ({

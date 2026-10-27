@@ -38,7 +38,8 @@ export function construirePlan(criteres: CriterePlan[], statuts: Map<string, Sta
   const out: ActionProposee[] = [];
   for (const c of criteres) {
     const s = statuts.get(c.id);
-    if (s !== "NON" && s !== "PARTIELLEMENT") continue;
+    // Critère « plateforme » (0 point) : chantier produit Speedmedia, pas une action du client
+    if ((s !== "NON" && s !== "PARTIELLEMENT") || c.points <= 0) continue;
     const leviers = enRetard.filter((l) => { const def = LEVIERS.find((x) => x.code === l.code); return def ? criteresDuLevier(def, c.id) : false; });
     const poids = Math.max(1, ...leviers.map((l) => l.poids));
     const effort = (c.offreSiNon && efforts[c.offreSiNon]) || "moyen";
