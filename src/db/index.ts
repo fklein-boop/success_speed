@@ -21,6 +21,12 @@ async function create(): Promise<DB> {
   const dir = process.env.PGLITE_DIR ?? ".data/pglite";
   if (dir !== "memory") (await import("node:fs")).mkdirSync(dir, { recursive: true });
   const client = dir === "memory" ? new PGlite() : new PGlite(dir);
+  // Base locale sur disque : fermeture propre à l'arrêt du serveur (un arrêt brutal pendant une écriture l'endommage)
+  if (dir !== "memory") {
+    const fermer = () => { void client.close().catch(() => null).finally(() => process.exit(0)); };
+    process.once("SIGTERM", fermer);
+    process.once("SIGINT", fermer);
+  }
   return drizzle({ client, schema }) as unknown as DB;
 }
 
