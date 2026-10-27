@@ -100,11 +100,20 @@ export class ScanContext {
     });
   }
 
+  /** Raison de l'échec du rendu navigateur (null si le rendu a réussi ou n'a pas été tenté) */
+  erreurNavigateur: string | null = null;
+
   navigateur(): Promise<DonneesNavigateur | null> {
     return this.une("navigateur", async () => {
       if (!this.opts.navigateur) return null;
       const home = await this.accueil();
-      const d = await collecterNavigateur(home.urlFinale);
+      // Une seconde tentative si le rendu échoue (machine chargée, site lent) ; la raison est gardée pour les résultats
+      let d: DonneesNavigateur;
+      try { d = await collecterNavigateur(home.urlFinale); }
+      catch (e1) {
+        try { d = await collecterNavigateur(home.urlFinale); }
+        catch (e2) { this.erreurNavigateur = (e2 instanceof Error ? e2.message : String(e2 ?? e1)).split("\n")[0].slice(0, 160); throw e2; }
+      }
       this.captures.push(...d.captures);
       return d;
     });

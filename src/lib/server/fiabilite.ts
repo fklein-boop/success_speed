@@ -42,12 +42,13 @@ export async function lancerCampagneFiabilite(db: DB, userId: number | null) {
   return { sites: sites.length, crees, refus };
 }
 
-export type Cause = "clé d'API manquante" | "site sans navigateur" | "tunnel désactivé" | "page ou fiche introuvable" | "erreur d'un service externe" | "donnée interne manquante" | "monitoring non démarré" | "autre";
+export type Cause = "clé d'API manquante" | "rendu navigateur en échec" | "site sans navigateur" | "tunnel désactivé" | "page ou fiche introuvable" | "erreur d'un service externe" | "donnée interne manquante" | "monitoring non démarré" | "autre";
 /** Cause principale d'un « non vérifiable », d'après le texte du contrôle */
 export function causeNonVerifiable(texte: string | null, mode: string | null): Cause {
   const t = (texte ?? "").toLowerCase();
   if (/cl[ée] .*(manquante|non configur|absente)|sans cl[ée]|api_key/.test(t)) return "clé d'API manquante";
   if (/tunnel/.test(t) && /(désactiv|scan_tunnel)/.test(t)) return "tunnel désactivé";
+  if (/rendu navigateur en échec|faute de rendu/.test(t)) return "rendu navigateur en échec";
   if (/sans navigateur|navigateur indisponible/.test(t) || (mode === "http" && /tunnel|rendu|javascript/.test(t))) return "site sans navigateur";
   if (/monitoring/.test(t)) return "monitoring non démarré";
   if (/top ventes|dossiers import|ville et destination/.test(t)) return "donnée interne manquante";

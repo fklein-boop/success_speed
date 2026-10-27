@@ -79,6 +79,9 @@ export async function executerDetecteurs(url: string, opts: ScanOptions = {}): P
     } catch (e) {
       r = nonVerifiable(`Contrôle impossible : ${e instanceof Error ? e.message : "erreur"}.`);
     }
+    // Le navigateur était disponible mais le rendu de la page a échoué : on le dit, plutôt que « sans navigateur »
+    if (ctx.erreurNavigateur && (/sans navigateur/i.test(r.texte) || (r.statut === null && /fiche|page|tunnel/i.test(r.texte))))
+      r = { ...r, texte: `${r.texte.replace(/sans navigateur/i, "faute de rendu navigateur")} Rendu navigateur en échec : ${ctx.erreurNavigateur}` };
     resultats.set(d.critereId, r);
     await opts.onProgress?.({ critereId: d.critereId, etat: etatDe(r), resultat: r, dureeMs: Date.now() - debut });
   }

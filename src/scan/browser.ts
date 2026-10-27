@@ -110,7 +110,9 @@ export async function collecterNavigateur(url: string): Promise<DonneesNavigateu
     page.on("request", (r) => { if (requetes.length < 800) requetes.push(r.url()); });
     // On bloque toute soumission de formulaire, par sécurité
     await page.route("**/*", (route) => (route.request().method() === "POST" && route.request().resourceType() === "document" ? route.abort() : route.continue()));
-    await page.goto(url, { waitUntil: "load", timeout: 30000 });
+    // Pages lourdes (traceurs, vidéos) : on n'attend pas forcément l'événement « load », le DOM suffit
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+    await page.waitForLoadState("load", { timeout: 15000 }).catch(() => {});
     await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
     await page.waitForTimeout(2500);
     // Contrôle SSRF de l'URL finale
