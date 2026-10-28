@@ -33,6 +33,21 @@ export function ipPrivee(ip: string): boolean {
 export class UrlRefuseeError extends Error {}
 
 /** Vérifie qu'une URL publique peut être scannée (http/https, pas d'adresse interne). */
+/** Résolution DNS avec deux nouvelles tentatives : une panne réseau passagère ne doit pas rendre un site « introuvable ». */
+async function resoudre(host: string) {
+  let derniere: unknown;
+  for (let i = 0; i < 3; i++) {
+    try { return await lookup(host, { all: true }); }
+    catch (e) {
+      derniere = e;
+      // Domaine qui n'existe pas : inutile d'insister ; autre erreur (délai, serveur DNS) : on réessaie
+      if ((e as NodeJS.ErrnoException).code === "ENOTFOUND" && i >= 1) break;
+      await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+    }
+  }
+  throw new UrlRefuseeError(`Domaine introuvable : ${host}${(derniere as NodeJS.ErrnoException)?.code && (derniere as NodeJS.ErrnoException).code !== "ENOTFOUND" ? ` (${(derniere as NodeJS.ErrnoException).code})` : ""}`);
+}
+
 export async function verifierUrl(raw: string): Promise<URL> {
   let u: URL;
   try { u = new URL(raw); } catch { throw new UrlRefuseeError("URL invalide"); }
@@ -40,7 +55,7 @@ export async function verifierUrl(raw: string): Promise<URL> {
   if (u.username || u.password) throw new UrlRefuseeError("URL avec identifiants refusée");
   const host = u.hostname.replace(/^\[|\]$/g, "");
   if (!(process.env.NODE_ENV === "test" && process.env.SCAN_AUTORISER_LOCAL === "1") && (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal"))) throw new UrlRefuseeError("Adresse interne refusée");
-  const ips = isIP(host) ? [{ address: host }] : await lookup(host, { all: true }).catch(() => { throw new UrlRefuseeError(`Domaine introuvable : ${host}`); });
+  const ips = isIP(host) ? [{ address: host }] : await resoudre(host);
   // Exception réservée aux tests automatisés (pages d'exemple servies en local)
   const testsLocaux = process.env.NODE_ENV === "test" && process.env.SCAN_AUTORISER_LOCAL === "1";
   if (!testsLocaux && ips.some((x) => ipPrivee(x.address))) throw new UrlRefuseeError("Adresse interne refusée");
