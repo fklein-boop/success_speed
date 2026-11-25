@@ -2,7 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CheckCircle2, Maximize2, Scale, Wrench, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Download, Maximize2, Scale, Wrench, X } from "lucide-react";
 import type { Presentation } from "@/lib/server/presentation";
 import { fmtDate } from "@/lib/format";
 import { moisFrise } from "@/lib/restitution/feuille";
@@ -37,6 +37,7 @@ export function PresentationClient({ p, retour }: { p: Presentation; retour: str
         <span className="font-titres text-lg font-bold text-white">speed<span className="text-lagon">resa</span></span>
         <span>{p.client} · {p.preAudit ? "pré-audit" : "audit"} du {fmtDate(p.date)}</span>
         <span className="flex items-center gap-2">
+          {p.pdf && <a href={`/api/clients/${encodeURIComponent(p.clientId)}/restitution/pdf?telecharger=1`} className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 hover:bg-white/10" title="Télécharger la restitution en PDF" aria-label="Télécharger la restitution en PDF"><Download size={18} aria-hidden /> <span className="hidden sm:inline">PDF</span></a>}
           <button onClick={pleinEcran} className="rounded-full p-2 hover:bg-white/10" title="Plein écran (F)" aria-label="Plein écran"><Maximize2 size={18} /></button>
           <button onClick={sortir} className="rounded-full p-2 hover:bg-white/10" title="Quitter (Échap)" aria-label="Quitter la présentation"><X size={20} /></button>
         </span>

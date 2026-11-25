@@ -41,7 +41,10 @@ export async function presentationClient(db: DB, clientId: string, auditId?: num
   });
   const niveau = statutMaturite(score.score);
   return {
-    client: st.client.nom, date: st.audit.date, preAudit: st.audit.statut !== "finalise",
+    client: st.client.nom, clientId,
+    /** Le PDF de restitution porte sur l'audit de référence : téléchargeable seulement s'il s'agit de l'audit présenté */
+    pdf: restit.audit?.id === id,
+    date: st.audit.date, preAudit: st.audit.statut !== "finalise",
     score: score.score, scoreVise: score.scoreApres, niveau: niveau ? MATURITE_LIBELLE[niveau] : null,
     piliers, priorites: modele?.priorites ?? [], synthese: modele?.synthese ?? null, feuille: modele?.feuille ?? null,
   };
