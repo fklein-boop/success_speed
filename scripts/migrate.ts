@@ -8,6 +8,7 @@ import { seedReferentiel } from "../src/lib/seed";
 import { importAuditsV1 } from "../src/lib/server/audits";
 import { nettoyageLotD } from "../src/lib/server/referentiel";
 import { recomputeAll } from "../src/lib/server/recompute";
+import { ajoutsTableProduction } from "../src/lib/server/facturation";
 
 async function main() {
   const db = await getDb();
@@ -23,6 +24,8 @@ async function main() {
   // Lot D : une seule fois (paramètre « migration_lot_d »)
   const lotD = await nettoyageLotD(db);
   if (lotD) { await recomputeAll(db); console.log("Lot D appliqué :", lotD); }
+  const prod = await ajoutsTableProduction(db);
+  if (prod.length) console.log("Table de production complétée :", prod);
   console.log({ ...r, auditsImportes });
   process.exit(0);
 }

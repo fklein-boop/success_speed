@@ -23,7 +23,7 @@ export const TARIFS_DEFAUT: Tarifs = { demande: 0.5, resaliveInterne: 2, resaliv
 export type TableProduction = Record<string, string[]>;
 const QL = ["QUARTIER LIBRE", "QL VOYAGE", "BOURSE DES VOYAGES"];
 export const PRODUCTION_DEFAUT: TableProduction = {
-  B06: QL, C03: ["OLLANDINI"], C20: ["CORSICATOURS", "CANNELLE"], C24: ["CANNELLE"], D09: ["PERIER"], E16: ["EGYPT NILE CRUISES"],
+  B06: QL, C03: ["OLLANDINI"], C20: ["CORSICATOURS", "CANNELLE"], C24: ["CANNELLE"], D09: ["PERIER"], E16: ["EGYPT NILE CRUISES"], E22: ["EGYPTOURS.FR - 1241", "EGYPTOURS.FR FLEX - 1242"],
   H03: ["HANGARD"], K07: ["KOSMO"], M26: ["MND"], N03: ["NEWTOUR"], P17: ["PERIER"], P33: ["PANTHEON"],
   Q01: QL, Q03: QL, Q07: QL, Q08: QL, Q09: QL, R12: ["ROYER"], R15: ["EUROPA", "DÉSIRS2RÊVES"], R16: ["EUROPA", "DÉSIRS2RÊVES"],
   T13: ["TRAVEL EVASION"], T39: ["TOP OF TRAVEL"],

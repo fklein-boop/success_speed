@@ -14,6 +14,28 @@ export async function reglagesFacturation(db: DB): Promise<{ tarifs: Tarifs; pro
     production: (await lireParametre<TableProduction>(db, CLE_PROD)) ?? PRODUCTION_DEFAUT,
   };
 }
+/**
+ * Ajouts à une table de production déjà enregistrée (la valeur par défaut ne s'applique plus une fois les réglages sauvegardés).
+ * Une seule fois par ajout (paramètre témoin) : une suppression ultérieure par l'admin est respectée.
+ */
+const AJOUTS_PRODUCTION: { cle: string; ajout: TableProduction }[] = [
+  { cle: "migration_facturation_e22", ajout: { E22: PRODUCTION_DEFAUT.E22 } },
+];
+export async function ajoutsTableProduction(db: DB): Promise<string[]> {
+  const faits: string[] = [];
+  for (const { cle, ajout } of AJOUTS_PRODUCTION) {
+    if (await lireParametre(db, cle)) continue;
+    const t = await lireParametre<TableProduction>(db, CLE_PROD);
+    if (t) {
+      for (const [id, ks] of Object.entries(ajout)) t[id] = [...new Set([...(t[id] ?? []), ...ks])];
+      await ecrireParametre(db, CLE_PROD, t, null);
+    }
+    await ecrireParametre(db, cle, { applique: new Date().toISOString() }, null);
+    faits.push(cle);
+  }
+  return faits;
+}
+
 export async function enregistrerReglages(db: DB, userId: number, tarifs: Tarifs, production: TableProduction) {
   for (const v of Object.values(tarifs)) if (!Number.isFinite(v) || v < 0 || v > 100) throw new AuditError("Tarif invalide.", 400);
   await ecrireParametre(db, CLE_TARIFS, tarifs, userId);

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { getDb, type DB } from "@/db";
 import { seedReferentiel } from "@/lib/seed";
 import { createImport, addRows, applyImport } from "@/lib/server/imports";
-import { facturationMois } from "@/lib/server/facturation";
+import { ajoutsTableProduction, facturationMois, reglagesFacturation } from "@/lib/server/facturation";
+import { ecrireParametre } from "@/lib/server/parametres";
 import { lignesFacture, moisPrecedent, tableEnTexte, texteEnTable, PRODUCTION_DEFAUT, syntheseAgence } from "@/lib/facturation/calcul";
 import { loadFixture } from "./helpers";
 
@@ -58,6 +59,24 @@ describe("Facturation — factures de septembre 2026", () => {
     }
     expect(ligne(["E16"], "demandes")?.montant).toBe(179);
     expect(ligne(["E16"], "interne")?.montant).toBe(122);
+  });
+
+  it("Egyptours.fr (E22) : fournisseurs EGYPTOURS.FR - 1241 / FLEX - 1242 en production interne", () => {
+    const e22 = f.agences.find((a) => a.idAgence === "E22")!;
+    expect(e22).toMatchObject({ production: true, prodPax: 2, horsProdCa: 0 });
+    expect(ligne(["E22"], "interne")).toMatchObject({ quantite: 2, montant: 4 });
+    expect(ligne(["E22"], "externe")).toBeUndefined();
+    expect(syntheseAgence("E22", [{ idAgence: "E22", producteur: false, pax: 3, origine: "RésaLive", erreurResalive: false, fournisseur: "EGYPTOURS.FR FLEX - 1242", total: 900, date: "2026-09-02" }], PRODUCTION_DEFAUT).prodPax).toBe(3);
+  });
+
+  it("table déjà enregistrée : E22 ajoutée une seule fois par la migration", async () => {
+    const { E22: _e22, ...ancienne } = PRODUCTION_DEFAUT;
+    await ecrireParametre(db, "facturation_production", { ...ancienne, Z99: ["TEST"] }, null);
+    expect(await ajoutsTableProduction(db)).toEqual(["migration_facturation_e22"]);
+    const { production } = await reglagesFacturation(db);
+    expect(production.E22).toEqual(["EGYPTOURS.FR - 1241", "EGYPTOURS.FR FLEX - 1242"]);
+    expect(production.Z99).toEqual(["TEST"]);
+    expect(await ajoutsTableProduction(db)).toEqual([]);
   });
 
   it("agence sans production déclarée : RésaLive OK compté hors production", () => {
