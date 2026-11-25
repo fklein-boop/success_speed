@@ -7,11 +7,17 @@ import { suivre } from "@/lib/services/etat";
  * Le texte extrait des sites est TOUJOURS passé comme donnée à analyser, jamais comme instruction.
  * Sans ANTHROPIC_API_KEY, iaDisponible() renvoie false et les détecteurs gardent leur analyse par motifs.
  */
-export const iaDisponible = () => !!process.env.ANTHROPIC_API_KEY;
+/** Problème de la clé ANTHROPIC_API_KEY (absente, ou collée masquée « sk-ant-•••• » / avec espaces), sinon null. */
+export function problemeCleIa(cle = process.env.ANTHROPIC_API_KEY): string | null {
+  if (!cle?.trim()) return "Clé Anthropic manquante : renseignez ANTHROPIC_API_KEY dans les variables Vercel, puis Redeploy.";
+  if (!/^[\x21-\x7e]+$/.test(cle.trim())) return "Clé Anthropic invalide : la valeur de ANTHROPIC_API_KEY sur Vercel contient des caractères masqués (« • ») ou des espaces. Recollez la clé complète depuis la console Anthropic, puis Redeploy.";
+  return null;
+}
+export const iaDisponible = () => problemeCleIa() === null;
 export const modeleIa = () => process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
 
 let client: Anthropic | null = null;
-const anthropic = () => (client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 90_000, maxRetries: 1 }));
+const anthropic = () => (client ??= new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY?.trim(), timeout: 90_000, maxRetries: 1 }));
 
 const SYSTEME = [
   "Tu es un auditeur expert du e-tourisme français (Code du tourisme, RGPD, droit de la consommation) qui travaille pour l'équipe Customer Success de Speedmedia (éditeur de SpeedResa).",

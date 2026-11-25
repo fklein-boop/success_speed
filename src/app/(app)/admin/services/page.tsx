@@ -12,11 +12,12 @@ import { CRITERES_PAR_EXPORT } from "@/lib/audit/backoffice";
 import { FormAdmin } from "@/components/admin/FormAdmin";
 import { fmtDateTime } from "@/lib/format";
 import { sourceAbandonAction } from "../actions";
+import { problemeCleIa } from "@/scan/ia";
 
 const configure: Record<Service, () => boolean> = {
   places: () => !!process.env.GOOGLE_PLACES_API_KEY,
   pagespeed: () => !!process.env.GOOGLE_PAGESPEED_API_KEY,
-  anthropic: () => !!process.env.ANTHROPIC_API_KEY,
+  anthropic: () => !problemeCleIa(),
   resend: () => !!process.env.RESEND_API_KEY,
   ga4: () => ga4Configure(),
   worker: () => process.env.SCAN_MODE === "worker",
@@ -49,7 +50,7 @@ export default async function ServicesPage() {
                 <tr key={s.id} className="border-t border-gris-clair align-top">
                   <td className="px-3 py-2 font-semibold">{s.nom}{s.id === "ga4" && <Link href="/admin/google-analytics" className="ml-2 text-xs font-normal text-horizon hover:underline">configurer</Link>}</td>
                   <td className="px-3 py-2 font-mono text-xs">{s.variable}</td>
-                  <td className="px-3 py-2">{ok ? (echecRecent ? <span className="font-semibold text-rouge-texte">Configuré, en erreur</span> : <span className="text-[#0b7a5e]">Configuré</span>) : <span className="font-semibold text-rouge-texte">Non configuré</span>}</td>
+                  <td className="px-3 py-2">{s.id === "anthropic" && process.env.ANTHROPIC_API_KEY && !ok ? <span className="font-semibold text-rouge-texte">{problemeCleIa()}</span> : ok ? (echecRecent ? <span className="font-semibold text-rouge-texte">Configuré, en erreur</span> : <span className="text-[#0b7a5e]">Configuré</span>) : <span className="font-semibold text-rouge-texte">Non configuré</span>}</td>
                   <td className="px-3 py-2 whitespace-nowrap">{x.dernierSucces ? fmtDateTime(new Date(x.dernierSucces)) : "—"}</td>
                   <td className="px-3 py-2">{x.dernierEchec ? <><span className="whitespace-nowrap">{fmtDateTime(new Date(x.dernierEchec))}</span><br /><span className="text-xs text-gris-texte">{x.message}</span></> : "—"}</td>
                   <td className="px-3 py-2 text-xs">{s.criteres}</td>
